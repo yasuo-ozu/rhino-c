@@ -44,3 +44,4 @@ int rh_getchar(rh_file *file, int in_literal) {
 	return c;
 }
 
+/* vim: set foldmethod=marker : */

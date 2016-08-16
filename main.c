@@ -46,13 +46,13 @@ int rhino_main(int argc, char **argv) {
 
 	rh_token token;
 	// Normally rh_next_token will be called from something compile proceedures.
-	//while ((token = rh_next_token(&file)).kind);
-
+	while ((token = rh_next_token(&file)).kind);
+/*
 	int c;
 	while ((c = rh_getchar(&file, 0)) != EOF) {
 		printf("%c", (char) c);
 	}
-
+*/
 	fclose(file.fp);
 	return (0);
 }
@@ -61,3 +61,4 @@ int main(int argc, char **argv) {
 	return rhino_main(argc, argv);
 }
 
+/* vim: set foldmethod=marker : */

@@ -1,10 +1,10 @@
-SRCS = *.c
+SRCS = compile.c file.c main.c token.c
 HEADERS = *.h
 
 .PHONY: clean
 
 rhino:	$(SRCS) $(HEADERS) Makefile
-	gcc -Wall -O2 -o rhino $(SRCS)
+	gcc -O2 -o rhino $(SRCS)
 
 clean:	
 	rm -rf *.o rhino

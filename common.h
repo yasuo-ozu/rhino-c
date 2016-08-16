@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 
 /* common settings */
@@ -33,6 +34,7 @@ typedef struct rh_file {
 } rh_file;
 
 int rh_getchar(rh_file *file, int in_literal);
+void rh_ungetc(rh_file *file, int c);
 
 /* Defined in token.c */
 
