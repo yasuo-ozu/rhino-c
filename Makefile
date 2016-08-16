@@ -1,4 +1,4 @@
-SRCS = compile.c file.c main.c token.c
+SRCS = compile.c file.c main.c token.c execute.c
 HEADERS = *.h
 
 .PHONY: clean

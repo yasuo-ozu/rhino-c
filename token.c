@@ -66,7 +66,7 @@ void rh_dump_token(FILE *fp, rh_token token) { /*{{{*/
 	}
 	if (token.kind == TK_STRING) { fprintf(fp, "STRING\n"); return; }
 	if (token.kind == TK_VAL) { 
-		fprintf(fp, "VAL: %ld, %llf\n", token.val_int, token.val_float); 
+		fprintf(fp, "VAL: %lld, %llf\n", token.val_int, token.val_float); 
 		return;
 	}
 	if (token.kind == TK_IDENT) { fprintf(fp, "IDENT\n"); return; }
@@ -180,7 +180,7 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 					if (token.type == TYPE_SINT) token.type = TYPE_SLONG;
 					else if (token.type == TYPE_DOUBLE) token.type = TYPE_LDOUBLE;
 					else {
-						fprintf(stderr, "err: Missing in flag l");
+						fprintf(stderr, "err: Missing in flag l\n");
 						exit(1);
 					}
 				}
@@ -200,6 +200,10 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 			fprintf(stderr, "err: Missing in flag\n");
 			exit(1);
 		}
+	} else if (c == '"') {
+		// TODO:
+	} else if (c == '\'') {
+		// TODO:
 	} else {
 		for (i = 0; multisymbol_token_table[i].kind != 0; i++) {
 			for (j = 0, k = 0; ~c && multisymbol_token_table[i].symbol[j] == c; j++) {

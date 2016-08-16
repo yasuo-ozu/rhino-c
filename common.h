@@ -102,7 +102,7 @@ typedef struct {
 	rh_token_kind kind;
 	rh_type type;
 	long long val_int;
-	long long val_float;
+	long double val_float;
 	void *val_pointer;
 } rh_token;
 
@@ -111,6 +111,29 @@ void rh_dump_token(FILE *fp, rh_token token);
 
 /* Defined in compile.c */
 
+typedef struct rh_asm_exp {
+	struct rh_asm_exp *arg1, *arg2, *arg3;
+	rh_token token;
+} rh_asm_exp;
+
+typedef struct {
+	
+} rh_entry_ident;
+
+typedef struct {
+	rh_asm_exp *exp;
+} rh_asm_global;
+
+typedef struct {
+	rh_file *file;
+	rh_token token;
+} rh_compile_context;
+
+rh_asm_global rh_compile(rh_compile_context *ctx);
+
+/* Defined in execute.c */
+
+int rh_execute(rh_asm_global *global);
 
 
 

@@ -43,17 +43,32 @@ int rhino_main(int argc, char **argv) {
 		fprintf(stderr, "File open error: %s\n", fname);
 		return (1);
 	}
-
+/*
 	rh_token token;
 	// Normally rh_next_token will be called from something compile proceedures.
 	while ((token = rh_next_token(&file)).kind);
+	*/
 /*
 	int c;
 	while ((c = rh_getchar(&file, 0)) != EOF) {
 		printf("%c", (char) c);
 	}
 */
+
+	/* compile */
+	rh_asm_global global;
+	rh_compile_context ctx;
+	ctx.file = &file;
+	ctx.token = rh_next_token(&file);
+	global = rh_compile(&ctx);
 	fclose(file.fp);
+
+	/* run */
+	// return rh_execute(&global);
+	printf("Program ended with %d\n",  rh_execute(&global));
+
+	// TODO: release rh_asm_exp s
+
 	return (0);
 }
 
@@ -61,4 +76,3 @@ int main(int argc, char **argv) {
 	return rhino_main(argc, argv);
 }
 
-/* vim: set foldmethod=marker : */
