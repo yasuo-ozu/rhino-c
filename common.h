@@ -78,8 +78,32 @@ typedef enum {
 
 } rh_token_kind;
 
+typedef enum {
+	TYPE_NULL	= 0,	// 0000 0000
+	TYPE_SINT	= 1, 	// 0000 0001
+	TYPE_SCHAR	= 5, 	// 0000 0101
+	TYPE_SSHORT = 9,	// 0000 1001
+	TYPE_SLONG	= 1, 	// 0000 0001
+	TYPE_SLLONG	= 33, 	// 0010 0001
+	TYPE_UINT	= 17, 	// 0001 0001
+	TYPE_UCHAR	= 21, 	// 0001 0101
+	TYPE_USHORT	= 25,	// 0001 1001
+	TYPE_ULONG	= 17, 	// 0001 0001
+	TYPE_ULLONG	= 49, 	// 0011 0001
+	TYPE_FLOAT	= 10,	// 0000 1010 
+	TYPE_DOUBLE	= 2,	// 0000 0010 
+	TYPE_LDOUBLE= 10,	// 0010 0010 
+	TYPE_COMPLEX= 64,
+	TYPE_IMAGINARY=128
+	
+} rh_type;
+
 typedef struct {
 	rh_token_kind kind;
+	rh_type type;
+	long long val_int;
+	long long val_float;
+	void *val_pointer;
 } rh_token;
 
 rh_token rh_next_token(rh_file *file);

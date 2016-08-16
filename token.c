@@ -65,17 +65,20 @@ void rh_dump_token(FILE *fp, rh_token token) { /*{{{*/
 		}
 	}
 	if (token.kind == TK_STRING) { fprintf(fp, "STRING\n"); return; }
-	if (token.kind == TK_VAL) { fprintf(fp, "VAL\n"); return; }
+	if (token.kind == TK_VAL) { 
+		fprintf(fp, "VAL: %ld, %llf\n", token.val_int, token.val_float); 
+		return;
+	}
 	if (token.kind == TK_IDENT) { fprintf(fp, "IDENT\n"); return; }
 	if (token.kind == TK_NULL) { fprintf(fp, "NULL\n"); return; }
 	fprintf(fp, "ERR\n");
 } /*}}}*/
 
 rh_token rh_next_token(rh_file *file) {/*{{{*/
-	rh_token token; token.kind = TK_NULL;
-	int c = rh_getchar(file, 0), i, j, k;
+	rh_token token = {TK_NULL, TYPE_NULL, 0, 0.0, NULL};
+	int c = rh_getchar(file, 0), a, i, j, k;
+	double d;
 	char buf[MAX_TOKEN_LENGTH + 1];
-
 
 	while (~c && isspace(c)) c = rh_getchar(file, 0);
 	if(!~c) return token;
@@ -96,8 +99,107 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 		if (token.kind == TK_NULL) {
 			token.kind = TK_IDENT;
 		}
-//	} else if ('0' <= c && c <= '9') {
-//		i = 0;
+	} else if ('0' <= c && c <= '9') {
+		token.kind = TK_VAL;
+		token.type = TYPE_SINT;
+		int is_16shin = 0;		// 16-shin flag
+		if (c == '0') {
+			c = rh_getchar(file, 0);
+			if (c == 'x' || c == 'X') {
+				is_16shin = 1;
+				c = rh_getchar(file, 0);
+				for (;;) {
+					if ('0' <= c && c <= '9') i = c - '0';
+					else if ('a' <= c && c <= 'f') i = c - 'a' + 10;
+					else if ('A' <= c && c <= 'F') i = c - 'A' + 10;
+					else break;
+					token.val_int = token.val_int * 16 + i; 
+					c = rh_getchar(file, 0);
+				}
+				token.val_float = (float) token.val_int;
+			} else {	/* if (c == 'x' || c == 'X') */
+				/* 8-shin number (or 0) */
+				i = 0;
+				while ('0' <= c && c <= '7') {
+					i = i * 8 + (c - '0');
+					c = rh_getchar(file, 0);
+				}
+				token.val_float = token.val_int = i;
+			}
+		} else {		/* if (c == '0') */
+			i = 0;
+			while ('0' <= c && c <= '9') {
+				i = i * 10 + (c - '0');
+				c = rh_getchar(file, 0);
+			}
+			token.val_float = token.val_int = i;
+		}
+		if (c == '.') {
+			token.type = TYPE_DOUBLE;
+			i = 10;
+			c = rh_getchar(file, 0);
+			while ('0' <= c && c <= '9') {
+				token.val_float += (c - '0') / (double) i;
+				i *= 10;
+				c = rh_getchar(file, 0);
+			}
+		}
+		if (is_16shin && (c == 'p' || c == 'P') || !is_16shin && (c == 'e' || c == 'E')) {
+			c = rh_getchar(file, 0);
+			j = c == '-' ? -1 : 1;
+			a = 0;
+			if (c == '-' || c == '+') a = c, c = rh_getchar(file, 0);
+			if ('0' <= c && c <= '9') {
+				i = 0;
+				do {
+					i = i * 10 + (c - '0');
+					c = rh_getchar(file, 0);
+				} while ('0' <= c && c <= '9');
+				d = j < 0 ? 0.1 : 10.0;
+				for (; i; i--) {
+					token.val_int *= d;
+					token.val_float *= d;
+				}
+				token.type = TYPE_DOUBLE;
+			} else {
+				fprintf(stderr, "err: Value power must be integer\n");
+				exit(1);
+				if (a) {
+					rh_ungetc(file, c);
+					c = a;
+				}
+			}
+		}
+		for (;;) {
+			if (c == 'l' || c == 'L') {
+				a = rh_getchar(file, 0);
+				if ((a == 'l' || a == 'L') && token.type == TYPE_SINT) {
+					token.type = TYPE_SLLONG;
+				} else {
+					rh_ungetc(file, a);
+					if (token.type == TYPE_SINT) token.type = TYPE_SLONG;
+					else if (token.type == TYPE_DOUBLE) token.type = TYPE_LDOUBLE;
+					else {
+						fprintf(stderr, "err: Missing in flag l");
+						exit(1);
+					}
+				}
+			}else if ((c == 'u' || c == 'U') && (token.type & 1)) {
+				if (token.type & 16) {
+					fprintf(stderr, "err: Missing in flag u\n");
+					exit(1);
+				} else {
+					token.type &= 16;
+				}
+			} else if ((c == 'f' || c == 'F') && token.type == TYPE_DOUBLE) {
+				token.type = TYPE_FLOAT;
+			} else break;
+			c = rh_getchar(file, 0);
+		}
+		if ('0' <= c && c <= '9' || c == '_' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z') {
+			fprintf(stderr, "err: Missing in flag\n");
+			exit(1);
+		}
 	} else {
 		for (i = 0; multisymbol_token_table[i].kind != 0; i++) {
 			for (j = 0, k = 0; ~c && multisymbol_token_table[i].symbol[j] == c; j++) {
