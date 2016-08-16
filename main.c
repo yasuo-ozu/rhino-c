@@ -56,6 +56,7 @@ int rhino_main(int argc, char **argv) {
 */
 
 	/* compile */
+	rh_token_init();
 	rh_asm_global global;
 	rh_compile_context ctx;
 	ctx.file = &file;

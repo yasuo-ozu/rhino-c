@@ -74,22 +74,52 @@ void rh_dump_token(FILE *fp, rh_token token) { /*{{{*/
 	fprintf(fp, "ERR\n");
 } /*}}}*/
 
+enum {/*{{{*/
+	CP_CAPITAL		= 1, CP_LITERAL		= 2, CP_8DIGIT		= 4,
+	CP_10DIGIT		= 8, CP_16DIGIT		= 16, CP_SPACE		= 32,
+	CP_IDENT_FIRST	= 64, CP_IDENT		= 128, CP_L			= 256,
+	CP_F			= 512, CP_P			= 1024, CP_E			= 2048,
+	CP_U			= 4096, CP_X		= 8192
+} ctbl[0xFF];/*}}}*/
+
+void rh_token_init() {/*{{{*/
+	int c;
+	for (c = 0; c < 0xFF; c++) {
+		if ('A' <= c && c <= 'Z')	ctbl[c] |= CP_CAPITAL;
+		if ('a' <= c && c <= 'z')	ctbl[c] |= CP_LITERAL;
+		if ('0' <= c && c <= '7')	ctbl[c] |= CP_8DIGIT;
+		if ('0' <= c && c <= '9')	ctbl[c] |= CP_10DIGIT;
+		if ('0' <= c && c <= '9' || 'A' <= c && c <= 'F' || 'a' <= c && c <= 'f')
+									ctbl[c] |= CP_16DIGIT;
+		if (isspace(c))				ctbl[c] |= CP_SPACE;
+		if (c == '_' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z')
+									ctbl[c] |= CP_IDENT_FIRST;
+		if (c == '_' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9')
+									ctbl[c] |= CP_IDENT;
+	}
+	ctbl['L'] = ctbl['l'] = CP_L;
+	ctbl['F'] = ctbl['f'] = CP_F;
+	ctbl['P'] = ctbl['p'] = CP_P;
+	ctbl['E'] = ctbl['e'] = CP_E;
+	ctbl['U'] = ctbl['u'] = CP_U;
+	ctbl['X'] = ctbl['x'] = CP_X;
+}/*}}}*/
+
 rh_token rh_next_token(rh_file *file) {/*{{{*/
 	rh_token token = {TK_NULL, TYPE_NULL, 0, 0.0, NULL};
 	int c = rh_getchar(file, 0), a, i, j, k;
 	double d;
 	char buf[MAX_TOKEN_LENGTH + 1];
 
-	while (~c && isspace(c)) c = rh_getchar(file, 0);
+	while (~c && (ctbl[c] & CP_SPACE)) c = rh_getchar(file, 0);
 	if(!~c) return token;
 
-	if (c == '_' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z') {
+	if (ctbl[c] & CP_IDENT_FIRST) {
 		i = 0;
 		do {
 			if (i < MAX_TOKEN_LENGTH) buf[i++] = (char) c;
 			c = rh_getchar(file, 0);
-		} while (c == '_' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' ||
-				'0' <= c && c <= '9');
+		} while (ctbl[c] & CP_IDENT);
 		buf[i] = '\0';
 		for (i = 0; ident_token_table[i].kind != TK_NULL; i++) {
 			if (strcmp(ident_token_table[i].ident,  buf) == 0) {
@@ -99,36 +129,36 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 		if (token.kind == TK_NULL) {
 			token.kind = TK_IDENT;
 		}
-	} else if ('0' <= c && c <= '9') {
+	} else if (ctbl[c] & CP_10DIGIT) {
 		token.kind = TK_VAL;
 		token.type = TYPE_SINT;
 		int is_16shin = 0;		// 16-shin flag
 		if (c == '0') {
 			c = rh_getchar(file, 0);
-			if (c == 'x' || c == 'X') {
+			if (ctbl[c] & CP_X) {
 				is_16shin = 1;
 				c = rh_getchar(file, 0);
 				for (;;) {
-					if ('0' <= c && c <= '9') i = c - '0';
-					else if ('a' <= c && c <= 'f') i = c - 'a' + 10;
-					else if ('A' <= c && c <= 'F') i = c - 'A' + 10;
+					if (ctbl[c] & CP_10DIGIT) i = c - '0';
+					else if (ctbl[c] & CP_16DIGIT) 
+						i = c - (ctbl[c] & CP_CAPITAL ? 'A' : 'a') + 10;
 					else break;
 					token.val_int = token.val_int * 16 + i; 
 					c = rh_getchar(file, 0);
 				}
 				token.val_float = (float) token.val_int;
-			} else {	/* if (c == 'x' || c == 'X') */
+			} else {
 				/* 8-shin number (or 0) */
 				i = 0;
-				while ('0' <= c && c <= '7') {
+				while (ctbl[c] & CP_8DIGIT) {
 					i = i * 8 + (c - '0');
 					c = rh_getchar(file, 0);
 				}
 				token.val_float = token.val_int = i;
 			}
-		} else {		/* if (c == '0') */
+		} else {
 			i = 0;
-			while ('0' <= c && c <= '9') {
+			while (ctbl[c] & CP_10DIGIT) {
 				i = i * 10 + (c - '0');
 				c = rh_getchar(file, 0);
 			}
@@ -138,23 +168,23 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 			token.type = TYPE_DOUBLE;
 			i = 10;
 			c = rh_getchar(file, 0);
-			while ('0' <= c && c <= '9') {
+			while (ctbl[c] & CP_10DIGIT) {
 				token.val_float += (c - '0') / (double) i;
 				i *= 10;
 				c = rh_getchar(file, 0);
 			}
 		}
-		if (is_16shin && (c == 'p' || c == 'P') || !is_16shin && (c == 'e' || c == 'E')) {
+		if (is_16shin && ctbl[c] & CP_P || !is_16shin && ctbl[c] & CP_E) {
 			c = rh_getchar(file, 0);
 			j = c == '-' ? -1 : 1;
 			a = 0;
 			if (c == '-' || c == '+') a = c, c = rh_getchar(file, 0);
-			if ('0' <= c && c <= '9') {
+			if (ctbl[c] & CP_10DIGIT) {
 				i = 0;
 				do {
 					i = i * 10 + (c - '0');
 					c = rh_getchar(file, 0);
-				} while ('0' <= c && c <= '9');
+				} while (ctbl[c] & CP_10DIGIT);
 				d = j < 0 ? 0.1 : 10.0;
 				for (; i; i--) {
 					token.val_int *= d;
@@ -171,9 +201,9 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 			}
 		}
 		for (;;) {
-			if (c == 'l' || c == 'L') {
+			if (ctbl[c] & CP_L) {
 				a = rh_getchar(file, 0);
-				if ((a == 'l' || a == 'L') && token.type == TYPE_SINT) {
+				if (ctbl[a] & CP_L && token.type == TYPE_SINT) {
 					token.type = TYPE_SLLONG;
 				} else {
 					rh_ungetc(file, a);
@@ -184,19 +214,19 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 						exit(1);
 					}
 				}
-			}else if ((c == 'u' || c == 'U') && (token.type & 1)) {
+			}else if (ctbl[c] & CP_U && token.type & 1) {
 				if (token.type & 16) {
 					fprintf(stderr, "err: Missing in flag u\n");
 					exit(1);
 				} else {
 					token.type &= 16;
 				}
-			} else if ((c == 'f' || c == 'F') && token.type == TYPE_DOUBLE) {
+			} else if (ctbl[c] & CP_F && token.type == TYPE_DOUBLE) {
 				token.type = TYPE_FLOAT;
 			} else break;
 			c = rh_getchar(file, 0);
 		}
-		if ('0' <= c && c <= '9' || c == '_' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z') {
+		if (ctbl[c] & CP_IDENT) {
 			fprintf(stderr, "err: Missing in flag\n");
 			exit(1);
 		}

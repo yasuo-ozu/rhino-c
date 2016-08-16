@@ -106,6 +106,7 @@ typedef struct {
 	void *val_pointer;
 } rh_token;
 
+void rh_token_init();
 rh_token rh_next_token(rh_file *file);
 void rh_dump_token(FILE *fp, rh_token token);
 
