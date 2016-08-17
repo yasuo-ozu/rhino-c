@@ -1,3 +1,9 @@
 *.bak
 rhino
+*db
+*.sln
+*.vcxproj
+*.vcxproj.*
+.vs
+Debug
 
