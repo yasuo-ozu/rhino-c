@@ -201,3 +201,15 @@ void rh_dump_token(FILE *fp, rh_token token);
 int rh_getchar(rh_context *ctx, int in_literal);
 void rh_ungetc(rh_file *file, int c);
 
+/* Defined in error.c */
+void rh_error(rh_context *ctx, rh_error_type type, rh_token *token, char *msg, ...);
+void rh_error_dump(rh_error_context *err, FILE *fp);
+#define E_FATAL(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_FATAL,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))
+#define E_ERROR(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_ERROR,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))
+#define E_WARNING(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_WARNING,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))
+#define E_NOTICE(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_NOTICE,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))
+#define E_INTERNAL(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_INTERNAL,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))
+
+
+
+

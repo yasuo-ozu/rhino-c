@@ -5,6 +5,13 @@ int rhino_main(int argc, char **argv) {
 	int i = 1, f_help = 0, f_dump_token = 0;
 	rh_context ctx;
 
+	ctx.error.errors = 0;
+	if (setjmp(ctx.error.jmpbuf)) {
+		fprintf(stderr, "*** Stop.\n");
+		rh_error_dump(&ctx.error, stderr);
+		exit(1);
+	}
+
 	/* Process argument and option(s) */
 	while (i < argc) {
 		if (argv[i][0] == '-') {
@@ -13,14 +20,12 @@ int rhino_main(int argc, char **argv) {
 			} else if (argv[i][1] == 'd') {
 				f_dump_token = 1;
 			} else {
-				printf("Invalid option : %s\n", argv[i]);
-				return (1);
+				E_FATAL(&ctx, 0, "Invalid option : %s\n", argv[i]);
 			}
 			i++;
 		} else {
 			if (fname) {
-				printf("Cannot load multiple files\n");
-				return (1);
+				E_FATAL(&ctx, 0, "Cannot load multiple files\n");
 			}
 			fname = argv[i];
 			i++;
@@ -30,13 +35,7 @@ int rhino_main(int argc, char **argv) {
 	/* Show help */
 	if (!fname || f_help) {
 		printf("Usage: %s file.c\n", argv[0]);
-		return (1);
-	}
-
-	if (rh_error_init(&ctx.error, "ja_JP.UTF8")) {
-		fprintf(stderr, "*** Stop.\n");
-		rh_error_dump(&ctx.error, stderr);
-		exit(1);
+		return (0);
 	}
 
 	/* Load file */
@@ -46,8 +45,7 @@ int rhino_main(int argc, char **argv) {
 	strncpy(ctx.file.name, fname, MAX_FNAME);
 	ctx.file.fp = fopen(fname, "r");
 	if (!ctx.file.fp) {
-		fprintf(stderr, "File open error: %s\n", fname);
-		return (1);
+		E_FATAL(&ctx, 0, "File open error: %s\n", fname);
 	}
 
 	/* compile */

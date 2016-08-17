@@ -24,12 +24,17 @@ void rh_error_dump(rh_error_context *err, FILE *fp) {
 	}
 	fprintf(fp, "\n");
 }
-
+/*
 int rh_error_init(rh_error_context *err, char *lang) {
 	err->errors = 0;
-	return setjmp(err->jmpbuf);
-}
+	if (setjmp(err->jmpbuf)) {
+		rh_error_dump(err, stderr);
+		exit(1);
+	}
+	return 0;
 
+}
+*/
 void rh_error(rh_context *ctx, rh_error_type type, rh_token *token, char *msg, ...) {
 	va_list va;
 	int i, count = 0;
@@ -61,5 +66,7 @@ void rh_error(rh_context *ctx, rh_error_type type, rh_token *token, char *msg, .
 	}
 	va_end(va);
 }
+
+
 
 /* vim: set foldmethod=marker : */
