@@ -105,20 +105,20 @@ void rh_token_init() {/*{{{*/
 	ctbl['X'] = ctbl['x'] = CP_X;
 }/*}}}*/
 
-rh_token rh_next_token(rh_file *file) {/*{{{*/
+rh_token rh_next_token(rh_context *ctx) {/*{{{*/
 	rh_token token = {TK_NULL, TYPE_NULL, 0, 0.0, NULL};
-	int c = rh_getchar(file, 0), a, i, j, k;
+	int c = rh_getchar(ctx, 0), a, i, j, k;
 	double d;
 	char buf[MAX_TOKEN_LENGTH + 1];
 
-	while (~c && (ctbl[c] & CP_SPACE)) c = rh_getchar(file, 0);
+	while (~c && (ctbl[c] & CP_SPACE)) c = rh_getchar(ctx, 0);
 	if(!~c) return token;
 
 	if (ctbl[c] & CP_IDENT_FIRST) {
 		i = 0;
 		do {
 			if (i < MAX_TOKEN_LENGTH) buf[i++] = (char) c;
-			c = rh_getchar(file, 0);
+			c = rh_getchar(ctx, 0);
 		} while (ctbl[c] & CP_IDENT);
 		buf[i] = '\0';
 		for (i = 0; ident_token_table[i].kind != TK_NULL; i++) {
@@ -134,17 +134,17 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 		token.type = TYPE_SINT;
 		int is_16shin = 0;		// 16-shin flag
 		if (c == '0') {
-			c = rh_getchar(file, 0);
+			c = rh_getchar(ctx, 0);
 			if (ctbl[c] & CP_X) {
 				is_16shin = 1;
-				c = rh_getchar(file, 0);
+				c = rh_getchar(ctx, 0);
 				for (;;) {
 					if (ctbl[c] & CP_10DIGIT) i = c - '0';
 					else if (ctbl[c] & CP_16DIGIT) 
 						i = c - (ctbl[c] & CP_CAPITAL ? 'A' : 'a') + 10;
 					else break;
 					token.val_int = token.val_int * 16 + i; 
-					c = rh_getchar(file, 0);
+					c = rh_getchar(ctx, 0);
 				}
 				token.val_float = (float) token.val_int;
 			} else {
@@ -152,7 +152,7 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 				i = 0;
 				while (ctbl[c] & CP_8DIGIT) {
 					i = i * 8 + (c - '0');
-					c = rh_getchar(file, 0);
+					c = rh_getchar(ctx, 0);
 				}
 				token.val_float = token.val_int = i;
 			}
@@ -160,30 +160,30 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 			i = 0;
 			while (ctbl[c] & CP_10DIGIT) {
 				i = i * 10 + (c - '0');
-				c = rh_getchar(file, 0);
+				c = rh_getchar(ctx, 0);
 			}
 			token.val_float = token.val_int = i;
 		}
 		if (c == '.') {
 			token.type = TYPE_DOUBLE;
 			i = 10;
-			c = rh_getchar(file, 0);
+			c = rh_getchar(ctx, 0);
 			while (ctbl[c] & CP_10DIGIT) {
 				token.val_float += (c - '0') / (double) i;
 				i *= 10;
-				c = rh_getchar(file, 0);
+				c = rh_getchar(ctx, 0);
 			}
 		}
 		if (is_16shin && ctbl[c] & CP_P || !is_16shin && ctbl[c] & CP_E) {
-			c = rh_getchar(file, 0);
+			c = rh_getchar(ctx, 0);
 			j = c == '-' ? -1 : 1;
 			a = 0;
-			if (c == '-' || c == '+') a = c, c = rh_getchar(file, 0);
+			if (c == '-' || c == '+') a = c, c = rh_getchar(ctx, 0);
 			if (ctbl[c] & CP_10DIGIT) {
 				i = 0;
 				do {
 					i = i * 10 + (c - '0');
-					c = rh_getchar(file, 0);
+					c = rh_getchar(ctx, 0);
 				} while (ctbl[c] & CP_10DIGIT);
 				d = j < 0 ? 0.1 : 10.0;
 				for (; i; i--) {
@@ -195,18 +195,18 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 				fprintf(stderr, "err: Value power must be integer\n");
 				exit(1);
 				if (a) {
-					rh_ungetc(file, c);
+					rh_ungetc(&ctx->file, c);
 					c = a;
 				}
 			}
 		}
 		for (;;) {
 			if (ctbl[c] & CP_L) {
-				a = rh_getchar(file, 0);
+				a = rh_getchar(ctx, 0);
 				if (ctbl[a] & CP_L && token.type == TYPE_SINT) {
 					token.type = TYPE_SLLONG;
 				} else {
-					rh_ungetc(file, a);
+					rh_ungetc(&ctx->file, a);
 					if (token.type == TYPE_SINT) token.type = TYPE_SLONG;
 					else if (token.type == TYPE_DOUBLE) token.type = TYPE_LDOUBLE;
 					else {
@@ -224,7 +224,7 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 			} else if (ctbl[c] & CP_F && token.type == TYPE_DOUBLE) {
 				token.type = TYPE_FLOAT;
 			} else break;
-			c = rh_getchar(file, 0);
+			c = rh_getchar(ctx, 0);
 		}
 		if (ctbl[c] & CP_IDENT) {
 			fprintf(stderr, "err: Missing in flag\n");
@@ -237,14 +237,14 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 	} else {
 		for (i = 0; multisymbol_token_table[i].kind != 0; i++) {
 			for (j = 0, k = 0; ~c && multisymbol_token_table[i].symbol[j] == c; j++) {
-				buf[k++] = c; c = rh_getchar(file, 0);
+				buf[k++] = c; c = rh_getchar(ctx, 0);
 			}
 			if (multisymbol_token_table[i].symbol[j] == 0) {
 				token.kind = multisymbol_token_table[i].kind; break;
 			} else {
 				/* TODO: This seems TOO SLOW */
 				buf[k++] = c;
-				while (k > 1) rh_ungetc(file, buf[--k]);
+				while (k > 1) rh_ungetc(&ctx->file, buf[--k]);
 				if (k == 1) c = *buf;
 			}
 		}
@@ -252,12 +252,12 @@ rh_token rh_next_token(rh_file *file) {/*{{{*/
 			fprintf(stderr, "Invalid char: %c\n", c);
 			exit(1);
 			// to escape the error:
-			rh_ungetc(file, c);
+			rh_ungetc(&ctx->file, c);
 		}
 	}
 
-	rh_ungetc(file, c);
-	if (file->dump_token) {
+	rh_ungetc(&ctx->file, c);
+	if (ctx->file.dump_token) {
 		rh_dump_token(stderr, token);
 	}
 	return token;

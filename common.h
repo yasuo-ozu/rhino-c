@@ -4,16 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <setjmp.h>
 
 
 /* common settings */
 
 #define MAX_FNAME	1024
 
-/* Defined in main.c */
-
-
-/* Defined in file.c */
+/* types and structures */
 
 #define MAX_FILE_DEPTH	40
 #define MAX_UNGET_BUF	10
@@ -32,11 +30,6 @@ typedef struct rh_file {
 	/* file-spicified flags */
 	int dump_token;
 } rh_file;
-
-int rh_getchar(rh_file *file, int in_literal);
-void rh_ungetc(rh_file *file, int c);
-
-/* Defined in token.c */
 
 #define MAX_TOKEN_LENGTH	1024
 #define MAX_KEYWORD_LENGTH	12
@@ -104,13 +97,8 @@ typedef struct {
 	long long val_int;
 	long double val_float;
 	void *val_pointer;
+	int line1, ch1, line2, ch2;
 } rh_token;
-
-void rh_token_init();
-rh_token rh_next_token(rh_file *file);
-void rh_dump_token(FILE *fp, rh_token token);
-
-/* Defined in memory.c */
 
 #define MEMORY_TANK_MAX	20
 #define MEMORY_SIZ		((rh_size_t) 0xFFFFFFFF)
@@ -142,13 +130,6 @@ typedef struct {
 	rh_size_t heap;
 } rh_memman;
 
-void rh_memman_init(rh_memman *man);
-void rh_memman_free(rh_memman *man);
-void rh_dump_memory_usage(FILE *fp, rh_memman *man);
-rh_size_t rh_malloc_type(rh_memman *man, rh_size_t size, rh_mem_type type);
-
-/* Defined in compile.c */
-
 typedef struct rh_asm_exp {
 	struct rh_asm_exp *arg1, *arg2, *arg3;
 	rh_token token;
@@ -163,15 +144,60 @@ typedef struct {
 } rh_asm_global;
 
 typedef struct {
-	rh_file *file;
 	rh_token token;
 } rh_compile_context;
 
-rh_asm_global rh_compile(rh_compile_context *ctx);
+#define ERROR_MAX_LENGTH	1024
+#define ERROR_MAX_COUNT		128
+#define ERROR_THRESHOLD		5
+#define TERM_MAX_WIDTH		80
+
+typedef enum {
+	ETYPE_NOTICE = 1, ETYPE_WARNING = 2, ETYPE_ERROR = 3,
+	ETYPE_FATAL = 4,	/* error which stops compile immediately */
+	ETYPE_TRAP = 5,		/* error which occurs in and stops executing */
+	ETYPE_INTERNAL = 6	/* mainly thrown by rh_assert() */
+} rh_error_type;
+
+typedef struct {
+	rh_error_type type;
+	char message[ERROR_MAX_LENGTH + 1];
+	int line1, ch1, line2, ch2;
+	// file 
+} rh_error_context_item;
+
+typedef struct {
+	rh_error_context_item error[ERROR_MAX_COUNT];
+	int errors;
+	jmp_buf jmpbuf;
+
+} rh_error_context;
+
+typedef struct {
+	rh_memman memman;
+	rh_file file;
+	rh_compile_context compile;
+	rh_error_context error;
+} rh_context;
 
 /* Defined in execute.c */
-
 int rh_execute(rh_asm_global *global);
 
+/* Defined in compile.c */
+rh_asm_global rh_compile(rh_context *ctx);
 
+/* Defined in memory.c */
+void rh_memman_init(rh_memman *man);
+void rh_memman_free(rh_memman *man);
+void rh_dump_memory_usage(FILE *fp, rh_memman *man);
+rh_size_t rh_malloc_type(rh_memman *man, rh_size_t size, rh_mem_type type);
+
+/* Defined in token.c */
+void rh_token_init();
+rh_token rh_next_token(rh_context *ctx);
+void rh_dump_token(FILE *fp, rh_token token);
+
+/* Defined in file.c */
+int rh_getchar(rh_context *ctx, int in_literal);
+void rh_ungetc(rh_file *file, int c);
 
