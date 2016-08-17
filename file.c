@@ -20,7 +20,7 @@ int rh_getc(rh_file *file) {
 	if (file->unget_buf_top) {
 		c = file->unget_buf[--file->unget_buf_top];
 	}
-	c = fgetc(file->fp);
+	else c = fgetc(file->fp);
 	if (c == '\n') {
 		~(file->line) && file->line++;
 		~(file->ch) && (file->ch = 0);

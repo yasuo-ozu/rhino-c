@@ -134,11 +134,11 @@ typedef struct rh_asm_exp {
 	struct rh_asm_exp *arg1, *arg2, *arg3;
 	rh_token token;
 } rh_asm_exp;
-
+/*
 typedef struct {
 	
 } rh_entry_ident;
-
+*/
 typedef struct {
 	rh_asm_exp *exp;
 } rh_asm_global;
