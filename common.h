@@ -110,6 +110,43 @@ void rh_token_init();
 rh_token rh_next_token(rh_file *file);
 void rh_dump_token(FILE *fp, rh_token token);
 
+/* Defined in memory.c */
+
+#define MEMORY_TANK_MAX	20
+#define MEMORY_SIZ		((rh_size_t) 0xFFFFFFFF)
+#define MEMORY_TEXT_START	0x400000
+#define MEMORY_DATA_START	0x800000 /* TODO: Is this efficient enough? */
+#define MEMORY_HEAP_START	0xC00000 /* TODO: Is this efficient enough? */
+#define MEMORY_MIN_TEXT_SIZE	0x10000
+#define MEMORY_MIN_DATA_SIZE	0x10000
+#define MEMORY_MIN_HEAP_SIZE	0x10000
+#define MEMORY_MIN_STACK_SIZE	0x10000
+
+typedef enum {
+	MTYPE_NULL = 0, MTYPE_HEAP = 16, MTYPE_STACK = 8, MTYPE_DATA = 5, MTYPE_TEXT = 3, MTYPE_RUNNABLE = 2, MTYPE_RO =1
+} rh_mem_type;
+
+typedef unsigned int rh_size_t;
+
+typedef struct {
+	struct {
+		rh_mem_type type;
+		rh_size_t begin, end, size;
+		void *ptr;
+	} tank[MEMORY_TANK_MAX];
+	int tanks;
+	rh_size_t pbreak;	/* changed from rh_malloc() */
+	rh_size_t stack;	/* changed from rh_malloc() */
+	rh_size_t text, text_top;
+	rh_size_t data, data_top;		/* BSS */
+	rh_size_t heap;
+} rh_memman;
+
+void rh_memman_init(rh_memman *man);
+void rh_memman_free(rh_memman *man);
+void rh_dump_memory_usage(FILE *fp, rh_memman *man);
+rh_size_t rh_malloc_type(rh_memman *man, rh_size_t size, rh_mem_type type);
+
 /* Defined in compile.c */
 
 typedef struct rh_asm_exp {
