@@ -5,6 +5,9 @@ int rhino_main(int argc, char **argv) {
 	int i = 1, f_help = 0, f_dump_token = 0;
 	rh_context ctx;
 
+	ctx.file = NULL;
+	ctx.token = NULL;
+
 	ctx.error.errors = 0;
 	if (setjmp(ctx.error.jmpbuf)) {
 		fprintf(stderr, "*** Stop.\n");
@@ -39,30 +42,35 @@ int rhino_main(int argc, char **argv) {
 	}
 
 	/* Load file */
-	ctx.file.line = ctx.file.ch = 0;
-	ctx.file.dump_token = f_dump_token;
-	ctx.file.unget_buf_top = 0;
-	strncpy(ctx.file.name, fname, MAX_FNAME);
-	ctx.file.fp = fopen(fname, "r");
-	if (!ctx.file.fp) {
+	ctx.file = malloc(sizeof(rh_file));
+	ctx.file->line = ctx.file->ch = 0;
+	ctx.file->dump_token = f_dump_token;
+	ctx.file->unget_buf_top = 0;
+	strncpy(ctx.file->name, fname, MAX_FNAME);
+	ctx.file->fp = fopen(fname, "r");
+	if (!ctx.file->fp) {
 		E_FATAL(&ctx, 0, "File open error: %s\n", fname);
 	}
 
-	/* compile */
 	rh_token_init();
-	rh_asm_global global;
-	ctx.compile.token = rh_next_token(&ctx);
-	global = rh_compile(&ctx);
-	fclose(ctx.file.fp);
-	rh_error_dump(&ctx.error, stderr);
+	rh_next_token(&ctx);
+	// while (ctx.token->type != TKN_NULL) rh_next_token(&ctx);
 
-	/* run */
-	int ret;
-	printf("Program ended with %d\n",  ret = rh_execute(&global));
+	/* compile */
+	 rh_token_init();
+	 rh_asm_global global;
+	 ctx.compile.token = rh_next_token(&ctx);
+	 global = rh_compile(&ctx);
+	 fclose(ctx.file.fp);
+	 rh_error_dump(&ctx.error, stderr);
+
+	// /* run */
+	// int ret;
+	// printf("Program ended with %d\n",  ret = rh_execute(&global));
 
 	// TODO: release rh_asm_exp s
 
-	return (ret);
+	// return (ret);
 }
 
 int main(int argc, char **argv) {

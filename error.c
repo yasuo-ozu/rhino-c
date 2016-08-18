@@ -52,8 +52,13 @@ void rh_error(rh_context *ctx, rh_error_type type, rh_token *token, char *msg, .
 		err->ch1 = token->ch1;
 		err->ch2 = token->ch2;
 	} else {
-		err->line1 = err->line2 = ctx->file.line;
-		err->ch1 = err->ch2 = ctx->file.ch;
+		if (ctx->file != NULL) {
+			err->line1 = err->line2 = ctx->file->line;
+			err->ch1 = err->ch2 = ctx->file->ch;
+		} else {
+			err->line1 = err->line2 = -1;
+			err->ch1 = err->ch2 = -1;
+		}
 	}
 	err->type = type;
 	ctx->error.errors++;

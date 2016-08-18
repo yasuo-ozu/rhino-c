@@ -1,90 +1,40 @@
 #include "common.h"
 
-struct /* ident_token_table */ {/*{{{*/
-	rh_token_kind kind;
-	char *ident;
-} ident_token_table[] = {
-	{TK_BOOL,		"_Bool"},		{TK_CHAR,		"char"},
-	{TK_SHORT,		"short"},		{TK_INT,		"int"},
-	{TK_LONG,		"long"},		{TK_SIGNED,		"signed"},
-	{TK_UNSIGNED,	"unsigned"},	{TK_FLOAT,		"float"},
-	{TK_DOUBLE,		"double"},		{TK_COMPLEX,	"_Complex"},
-	{TK_IMAGINARY,	"_Imaginary"},	{TK_STRUCT,		"struct"},
-	{TK_UNION,		"union"},		{TK_ENUM,		"enum"},
-	{TK_VOLATILE,	"volatile"},	{TK_CONST,		"const"},
-	{TK_RESTRICT,	"restrict"},	{TK_AUTO,		"auto"},
-	{TK_EXTERN,		"extern"},		{TK_STATIC,		"static"},
-	{TK_REGISTER,	"register"},	{TK_TYPEDEF,	"typedef"},
-	{TK_VOID,		"void"},		{TK_IF,			"if"},
-	{TK_ELSE,		"else"},		{TK_SWITCH,		"switch"},
-	{TK_CASE,		"case"},		{TK_DEFAULT,	"default"},
-	{TK_FOR,		"for"},			{TK_WHILE,		"while"},
-	{TK_DO,			"do"},			{TK_GOTO,		"goto"},
-	{TK_CONTINUE,	"continue"},	{TK_BREAK,		"break"},
-	{TK_RETURN,		"return"},		{TK_INLINE,		"inline"},
-	{TK_SIZEOF,		"sizeof"},
-	{TK_NULL, 0}
-};/*}}}*/
-
-struct /*  multisymbol_token_table */ {/*{{{*/
-	rh_token_kind kind;
-	char *symbol;
-} multisymbol_token_table[] = {
+char *symbol_with_multipul_chars[] = {/*{{{*/
 	/* 3 chars */
-	{TK_ANDEQ,		"&&="},	{TK_OREQ,		"||="},
+	"&&=", "||=", "<<=", ">>=",
 	/* 2 chars */
-	{TK_AND,		"&&"},	{TK_OR,			"||"},	{TK_PLUSPLUS,	"++"},
-	{TK_MINUSMINUS, "--"}, 	{TK_PLUSEQ,		"+="},	{TK_MINUSEQ,	"-="},
-	{TK_MULEQ,		"*="}, 	{TK_DIVEQ,		"/="},	{TK_BITOREQ,	"|="},
-	{TK_BITANDEQ,	"&="}, 	{TK_XOREQ,		"^="},	{TK_EQUAL,		"=="},
-	{TK_NOTEQ,		"!="},	{TK_LE,			"<="},	{TK_GE,			">="},
-	/* 1 chars */
-	{TK_LPAREN,		"("}, {TK_RPAREN,		")"},
-	{TK_LBRACE,		"{"}, {TK_RBRACE,		"}"},
-	{TK_LBRACKET,	"["}, {TK_RBRACKET,		"]"},
-	{TK_PLUS,		"+"}, {TK_MINUS,		"-"}, {TK_MUL,			"*"}, {TK_DIV,			"/"},
-	{TK_ASSIGN,		"="}, {TK_SEMICOLON,	";"}, {TK_COLON,		":"}, {TK_SHARP,		"#"},
-	{TK_COMMA,		","}, {TK_DOT,			"."}, {TK_MOD,			"%"}, {TK_NOT,			"!"},
-	{TK_SNGQ,		"'"}, {TK_DBLQ,			"\""}, {TK_BITAND,		"&"}, {TK_BITOR,		"|"},
-	{TK_XOR,		"^"}, {TK_LT,			"<"}, {TK_GT,			">"}, {TK_WHAT,			"?"},
-	{TK_NULL,		0}
+	"&&", "||", "++", "--", "<<", ">>",  "+=", "-=", "*=", "/=", 
+	"|=", "&=", "^=", "==", "!=", "<=", ">=", "->", 0
 };/*}}}*/
 
-void rh_dump_token(FILE *fp, rh_token token) { /*{{{*/
+void rh_dump_token(FILE *fp, rh_token *token) { /*{{{*/
+	static char *token_type_name[] = {
+		"NULL", "IDENT", "NUMERIC", "SYMBOL", "CHAR", "STRING"
+	};
 	int i;
-	for (i = 0; ident_token_table[i].kind != TK_NULL; i++) {
-		if (ident_token_table[i].kind == token.kind) {
-			fprintf(fp, "KEYWORD:\t%s\n", ident_token_table[i].ident);
-			return;
-		}
-	}
-	for (i = 0; multisymbol_token_table[i].kind != TK_NULL; i++) {
-		if (multisymbol_token_table[i].kind == token.kind) {
-			fprintf(fp, "SYMBOL:\t%s\n", multisymbol_token_table[i].symbol);
-			return;
-		}
-	}
-	if (token.kind == TK_STRING) { fprintf(fp, "STRING\n"); return; }
-	if (token.kind == TK_VAL) { 
-		fprintf(fp, "VAL: %lld, %llf\n", token.val_int, token.val_float); 
-		return;
-	}
-	if (token.kind == TK_IDENT) { fprintf(fp, "IDENT\n"); return; }
-	if (token.kind == TK_NULL) { fprintf(fp, "NULL\n"); return; }
-	fprintf(fp, "ERR\n");
+	printf("token ( type = %s, line = (%d, %d), ch = (%d, %d), byte = (%d, %d), text = %s\n",
+		token_type_name[token->type], token->line1, token->line2, token->ch1, 
+		token->ch2, token->byte1, token->byte2, token->text);
 } /*}}}*/
 
 enum {/*{{{*/
-	CP_CAPITAL		= 1, CP_LITERAL		= 2, CP_8DIGIT		= 4,
-	CP_10DIGIT		= 8, CP_16DIGIT		= 16, CP_SPACE		= 32,
-	CP_IDENT_FIRST	= 64, CP_IDENT		= 128, CP_L			= 256,
-	CP_F			= 512, CP_P			= 1024, CP_E			= 2048,
-	CP_U			= 4096, CP_X		= 8192
+	CP_CAPITAL		= 1,	/* A-Z */
+	CP_LITERAL		= 2,	/* a-z */
+	CP_8DIGIT		= 4,	/* 01234567*/
+	CP_10DIGIT		= 8,	/* 0123456789 */
+	CP_16DIGIT		= 16,	/* 0123456789ABCDEFabcdef */
+	CP_SPACE		= 32,	/* isspace() */
+	CP_IDENT_FIRST	= 64,	/* _A-Za-z */
+	CP_IDENT		= 128,	/* _A-Za-z0-9 */
+	CP_SYMBOL		= 256	/* !"#$%&'()*+,-./:;<=>?p[\]^`{|}~ */
 } ctbl[0xFF];/*}}}*/
 
 void rh_token_init() {/*{{{*/
 	int c;
+	char symbols[] = "!\"#$%&'()*+,-./:;<=>?p[\\]^`{|}~", *s;
 	for (c = 0; c < 0xFF; c++) {
+		ctbl[c] = 0;
 		if ('A' <= c && c <= 'Z')	ctbl[c] |= CP_CAPITAL;
 		if ('a' <= c && c <= 'z')	ctbl[c] |= CP_LITERAL;
 		if ('0' <= c && c <= '7')	ctbl[c] |= CP_8DIGIT;
@@ -97,170 +47,205 @@ void rh_token_init() {/*{{{*/
 		if (c == '_' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9')
 									ctbl[c] |= CP_IDENT;
 	}
-	ctbl['L'] = ctbl['l'] = CP_L;
-	ctbl['F'] = ctbl['f'] = CP_F;
-	ctbl['P'] = ctbl['p'] = CP_P;
-	ctbl['E'] = ctbl['e'] = CP_E;
-	ctbl['U'] = ctbl['u'] = CP_U;
-	ctbl['X'] = ctbl['x'] = CP_X;
+	for (s = symbols; *s; s++) ctbl[*s] |= CP_SYMBOL;
 }/*}}}*/
 
-rh_token rh_next_token(rh_context *ctx) {/*{{{*/
-	rh_token token = {TK_NULL, TYPE_NULL, 0, 0.0, NULL};
-	int c = rh_getchar(ctx, 0), a, i, j, k;
+size_t get_token_min_size() {/*{{{*/
+	rh_token *token;
+	size_t ret;
+	static size_t token_min_size = 0;
+	if (token_min_size) return token_min_size;
+	token = malloc(0xFF);	/* 0xFF is large enough? */
+	ret = (unsigned char *) &token->text - (unsigned char *) token;
+	free(token);
+	return token_min_size = ret;
+}/*}}}*/
+
+void rh_next_token(rh_context *ctx) {/*{{{*/
+
+	size_t token_min_size = get_token_min_size(), token_size;
+	int c = rh_getchar(ctx, 0), a, i, j, k, count = 0;
 	double d;
-	char buf[MAX_TOKEN_LENGTH + 1];
+	rh_token *token;
 
-	while (~c && (ctbl[c] & CP_SPACE)) c = rh_getchar(ctx, 0);
-	if(!~c) return token;
+	token_size = token_min_size + 32;	/* Normally almost all tokens length < 32 */
+	token = malloc(token_size);
+	token->type = TKN_NULL;
+	*token->text = '\0';
+	token->file = ctx->file;
+	token->line1	= token->line2	= token->file->line;
+	token->ch1		= token->ch2	= token->file->ch;
+	token->byte1	= token->byte2	= token->file->byte;
 
-	if (ctbl[c] & CP_IDENT_FIRST) {
-		i = 0;
-		do {
-			if (i < MAX_TOKEN_LENGTH) buf[i++] = (char) c;
-			c = rh_getchar(ctx, 0);
-		} while (ctbl[c] & CP_IDENT);
-		buf[i] = '\0';
-		for (i = 0; ident_token_table[i].kind != TK_NULL; i++) {
-			if (strcmp(ident_token_table[i].ident,  buf) == 0) {
-				token.kind = ident_token_table[i].kind; break;
-			}
-		}
-		if (token.kind == TK_NULL) {
-			token.kind = TK_IDENT;
-		}
-	} else if (ctbl[c] & CP_10DIGIT) {
-		token.kind = TK_VAL;
-		token.type = TYPE_SINT;
-		int is_16shin = 0;		// 16-shin flag
-		if (c == '0') {
-			c = rh_getchar(ctx, 0);
-			if (ctbl[c] & CP_X) {
-				is_16shin = 1;
+	while (c != EOF && (ctbl[c] & CP_SPACE)) c = rh_getchar(ctx, 0);
+	if (c != EOF) {
+		if (ctbl[c] & CP_IDENT) {	/* _A-Za-z0-9 */
+			token->type = (ctbl[c] & CP_IDENT_FIRST) ? TKN_IDENT : TKN_NUMERIC;
+			do {
+				if (token_min_size + count + 1 > token_size) {
+					token_size = token_size + 128;
+					token = realloc(token, token_size);
+				}
+				token->text[count++] = c;
 				c = rh_getchar(ctx, 0);
-				for (;;) {
-					if (ctbl[c] & CP_10DIGIT) i = c - '0';
-					else if (ctbl[c] & CP_16DIGIT) 
-						i = c - (ctbl[c] & CP_CAPITAL ? 'A' : 'a') + 10;
-					else break;
-					token.val_int = token.val_int * 16 + i; 
+			} while (ctbl[c] & CP_IDENT);
+			token->text[count] = '\0';
+		} else if (c == '"' || c == '\'') {
+			a = c;		/* reserve starting symbol */
+			token->type = a == '"' ? TKN_STRING : TKN_CHAR;
+			token->text[count++] = a;
+			while (c == a) {
+				do {
+					if (token_min_size + count + 2 > token_size) {
+						token_size = token_size + 128;
+						token = realloc(token, token_size);
+					}
+					c = rh_getchar(ctx, 0);
+					if (c == '\\') {
+						c = rh_getchar(ctx, 0);
+						if (c != a) token->text[count++] = '\\';
+					}
+					token->text[count++] = c;
+				} while (c != a && c != '\n' && c != EOF);
+				if (c != a) E_ERROR(ctx, 0, "needs %c", a);
+				do c = rh_getchar(ctx, 0); while (c != EOF && (ctbl[c] & CP_SPACE));
+			}
+			token->text[count++] = a;
+			token->text[count] = '\0';
+		} else {
+			token->type = TKN_SYMBOL;
+			for (i = 0; symbol_with_multipul_chars[i]; i++) {
+				a = c;
+				for (count = 0; c != EOF && symbol_with_multipul_chars[i][count] == c; count++) {
+					if (token_min_size + count + 1 > token_size) {
+						token_size = token_size + 128;
+						token = realloc(token, token_size);
+					}
+					token->text[count] = c;
+					if (c == '\0') break;
 					c = rh_getchar(ctx, 0);
 				}
-				token.val_float = (float) token.val_int;
+				if (c) {
+					count--;
+					while (count > 0) rh_ungetc(ctx->file, token->text[count--]);
+					c = a; count = 0;
+				} else break;
+			}
+			if (!count) {
+				token->text[count++] = c;
+				token->text[count] = '\0';
+				c = rh_getchar(ctx, 0);
+			}
+		}
+		rh_ungetc(ctx->file, c);
+	}
+	if (ctx->file->dump_token) {
+		rh_dump_token(stderr, token);
+	}
+	token->prev = ctx->token;
+	ctx->token = token;
+}/*}}}*/
+			/*
+			token.kind = TK_VAL;
+			token.type = TYPE_SINT;
+			int is_16shin = 0;		// 16-shin flag
+			if (c == '0') {
+				c = rh_getchar(ctx, 0);
+				if (ctbl[c] & CP_X) {
+					is_16shin = 1;
+					c = rh_getchar(ctx, 0);
+					for (;;) {
+						if (ctbl[c] & CP_10DIGIT) i = c - '0';
+						else if (ctbl[c] & CP_16DIGIT) 
+							i = c - (ctbl[c] & CP_CAPITAL ? 'A' : 'a') + 10;
+						else break;
+						token.val_int = token.val_int * 16 + i; 
+						c = rh_getchar(ctx, 0);
+					}
+					token.val_float = (float) token.val_int;
+				} else {
+					// 8-shin number (or 0) 
+					i = 0;
+					while (ctbl[c] & CP_8DIGIT) {
+						i = i * 8 + (c - '0');
+						c = rh_getchar(ctx, 0);
+					}
+					token.val_float = token.val_int = i;
+				}
 			} else {
-				/* 8-shin number (or 0) */
 				i = 0;
-				while (ctbl[c] & CP_8DIGIT) {
-					i = i * 8 + (c - '0');
+				while (ctbl[c] & CP_10DIGIT) {
+					i = i * 10 + (c - '0');
 					c = rh_getchar(ctx, 0);
 				}
 				token.val_float = token.val_int = i;
 			}
-		} else {
-			i = 0;
-			while (ctbl[c] & CP_10DIGIT) {
-				i = i * 10 + (c - '0');
-				c = rh_getchar(ctx, 0);
-			}
-			token.val_float = token.val_int = i;
-		}
-		if (c == '.') {
-			token.type = TYPE_DOUBLE;
-			i = 10;
-			c = rh_getchar(ctx, 0);
-			while (ctbl[c] & CP_10DIGIT) {
-				token.val_float += (c - '0') / (double) i;
-				i *= 10;
-				c = rh_getchar(ctx, 0);
-			}
-		}
-		if (is_16shin && ctbl[c] & CP_P || !is_16shin && ctbl[c] & CP_E) {
-			c = rh_getchar(ctx, 0);
-			j = c == '-' ? -1 : 1;
-			a = 0;
-			if (c == '-' || c == '+') a = c, c = rh_getchar(ctx, 0);
-			if (ctbl[c] & CP_10DIGIT) {
-				i = 0;
-				do {
-					i = i * 10 + (c - '0');
-					c = rh_getchar(ctx, 0);
-				} while (ctbl[c] & CP_10DIGIT);
-				d = j < 0 ? 0.1 : 10.0;
-				for (; i; i--) {
-					token.val_int *= d;
-					token.val_float *= d;
-				}
+			if (c == '.') {
 				token.type = TYPE_DOUBLE;
-			} else {
-				fprintf(stderr, "err: Value power must be integer\n");
-				exit(1);
-				if (a) {
-					rh_ungetc(&ctx->file, c);
-					c = a;
+				i = 10;
+				c = rh_getchar(ctx, 0);
+				while (ctbl[c] & CP_10DIGIT) {
+					token.val_float += (c - '0') / (double) i;
+					i *= 10;
+					c = rh_getchar(ctx, 0);
 				}
 			}
-		}
-		for (;;) {
-			if (ctbl[c] & CP_L) {
-				a = rh_getchar(ctx, 0);
-				if (ctbl[a] & CP_L && token.type == TYPE_SINT) {
-					token.type = TYPE_SLLONG;
+			if (is_16shin && ctbl[c] & CP_P || !is_16shin && ctbl[c] & CP_E) {
+				c = rh_getchar(ctx, 0);
+				j = c == '-' ? -1 : 1;
+				a = 0;
+				if (c == '-' || c == '+') a = c, c = rh_getchar(ctx, 0);
+				if (ctbl[c] & CP_10DIGIT) {
+					i = 0;
+					do {
+						i = i * 10 + (c - '0');
+						c = rh_getchar(ctx, 0);
+					} while (ctbl[c] & CP_10DIGIT);
+					d = j < 0 ? 0.1 : 10.0;
+					for (; i; i--) {
+						token.val_int *= d;
+						token.val_float *= d;
+					}
+					token.type = TYPE_DOUBLE;
 				} else {
-					rh_ungetc(&ctx->file, a);
-					if (token.type == TYPE_SINT) token.type = TYPE_SLONG;
-					else if (token.type == TYPE_DOUBLE) token.type = TYPE_LDOUBLE;
-					else {
-						fprintf(stderr, "err: Missing in flag l\n");
-						exit(1);
+					fprintf(stderr, "err: Value power must be integer\n");
+					exit(1);
+					if (a) {
+						rh_ungetc(&ctx->file, c);
+						c = a;
 					}
 				}
-			}else if (ctbl[c] & CP_U && token.type & 1) {
-				if (token.type & 16) {
-					fprintf(stderr, "err: Missing in flag u\n");
-					exit(1);
-				} else {
-					token.type &= 16;
-				}
-			} else if (ctbl[c] & CP_F && token.type == TYPE_DOUBLE) {
-				token.type = TYPE_FLOAT;
-			} else break;
-			c = rh_getchar(ctx, 0);
-		}
-		if (ctbl[c] & CP_IDENT) {
-			fprintf(stderr, "err: Missing in flag\n");
-			exit(1);
-		}
-	} else if (c == '"') {
-		// TODO:
-	} else if (c == '\'') {
-		// TODO:
-	} else {
-		for (i = 0; multisymbol_token_table[i].kind != 0; i++) {
-			for (j = 0, k = 0; ~c && multisymbol_token_table[i].symbol[j] == c; j++) {
-				buf[k++] = c; c = rh_getchar(ctx, 0);
 			}
-			if (multisymbol_token_table[i].symbol[j] == 0) {
-				token.kind = multisymbol_token_table[i].kind; break;
-			} else {
-				/* TODO: This seems TOO SLOW */
-				buf[k++] = c;
-				while (k > 1) rh_ungetc(&ctx->file, buf[--k]);
-				if (k == 1) c = *buf;
+			for (;;) {
+				if (ctbl[c] & CP_L) {
+					a = rh_getchar(ctx, 0);
+					if (ctbl[a] & CP_L && token.type == TYPE_SINT) {
+						token.type = TYPE_SLLONG;
+					} else {
+						rh_ungetc(&ctx->file, a);
+						if (token.type == TYPE_SINT) token.type = TYPE_SLONG;
+						else if (token.type == TYPE_DOUBLE) token.type = TYPE_LDOUBLE;
+						else {
+							fprintf(stderr, "err: Missing in flag l\n");
+							exit(1);
+						}
+					}
+				}else if (ctbl[c] & CP_U && token.type & 1) {
+					if (token.type & 16) {
+						fprintf(stderr, "err: Missing in flag u\n");
+						exit(1);
+					} else {
+						token.type &= 16;
+					}
+				} else if (ctbl[c] & CP_F && token.type == TYPE_DOUBLE) {
+					token.type = TYPE_FLOAT;
+				} else break;
+				c = rh_getchar(ctx, 0);
 			}
-		}
-		if (multisymbol_token_table[i].kind == TK_NULL) {
-			fprintf(stderr, "Invalid char: %c\n", c);
-			exit(1);
-			// to escape the error:
-			rh_ungetc(&ctx->file, c);
-		}
-	}
-
-	rh_ungetc(&ctx->file, c);
-	if (ctx->file.dump_token) {
-		rh_dump_token(stderr, token);
-	}
-	return token;
-}/*}}}*/
+			if (ctbl[c] & CP_IDENT) {
+				fprintf(stderr, "err: Missing in flag\n");
+				exit(1);
+			}
+			*/
 
 /* vim: set foldmethod=marker : */

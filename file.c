@@ -34,17 +34,17 @@ int rh_getc(rh_file *file) {
 }
 
 int rh_getchar(rh_context *ctx, int in_literal) {
-	int c = rh_getc(&ctx->file), a, b;
+	int c = rh_getc(ctx->file), a, b;
 	if (c == -1) return -1;
 	// TODO: insert proceedures for Trigraph, Preprocessor command
 	if (!in_literal && c == '/') {
-		if ((a = rh_getc(&ctx->file)) == '*') {
-			while ((a = rh_getc(&ctx->file)) != EOF) {
+		if ((a = rh_getc(ctx->file)) == '*') {
+			while ((a = rh_getc(ctx->file)) != EOF) {
 				if (a == '*') {
-					if ((a = rh_getc(&ctx->file)) == '/') {
+					if ((a = rh_getc(ctx->file)) == '/') {
 						c = ' '; break;
 					} else {
-						rh_ungetc(&ctx->file, a);
+						rh_ungetc(ctx->file, a);
 					}
 				}
 			}
@@ -52,9 +52,9 @@ int rh_getchar(rh_context *ctx, int in_literal) {
 				E_FATAL(ctx, 0, "File reached EOF in comment\n");
 			}
 		} else if (a == '/') {
-			while ((c = rh_getc(&ctx->file)), (c != EOF && c != '\n'));
+			while ((c = rh_getc(ctx->file)), (c != EOF && c != '\n'));
 		} else {
-			rh_ungetc(&ctx->file, a);
+			rh_ungetc(ctx->file, a);
 		}
 	}
 	return c;
