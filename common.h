@@ -11,8 +11,9 @@
 
 #define MAX_FNAME	1024
 
-/* types and structures */
-
+/****************************************/
+/*************** file.c *****************/
+/****************************************/
 #define MAX_FILE_DEPTH	40
 #define MAX_UNGET_BUF	10
 
@@ -31,6 +32,9 @@ typedef struct rh_file {
 	int dump_token;
 } rh_file;
 
+/****************************************/
+/************** token.c *****************/
+/****************************************/
 #define MAX_TOKEN_LENGTH	1024
 #define MAX_KEYWORD_LENGTH	12
 
@@ -100,6 +104,9 @@ typedef struct {
 	int line1, ch1, line2, ch2;
 } rh_token;
 
+/****************************************/
+/************** memory.c *****************/
+/****************************************/
 #define MEMORY_TANK_MAX	20
 #define MEMORY_SIZ		((rh_size_t) 0xFFFFFFFF)
 #define MEMORY_TEXT_START	0x400000
@@ -130,6 +137,9 @@ typedef struct {
 	rh_size_t heap;
 } rh_memman;
 
+/****************************************/
+/************** compile.c ***************/
+/****************************************/
 typedef struct rh_asm_exp {
 	struct rh_asm_exp *arg1, *arg2, *arg3;
 	rh_token token;
@@ -147,6 +157,9 @@ typedef struct {
 	rh_token token;
 } rh_compile_context;
 
+/****************************************/
+/**************** error.c ***************/
+/****************************************/
 #define ERROR_MAX_LENGTH	1024
 #define ERROR_MAX_COUNT		128
 #define ERROR_THRESHOLD		5
@@ -173,6 +186,9 @@ typedef struct {
 
 } rh_error_context;
 
+/****************************************/
+/**************** main.c ****************/
+/****************************************/
 typedef struct {
 	rh_memman memman;
 	rh_file file;

@@ -49,8 +49,7 @@ int rh_getchar(rh_context *ctx, int in_literal) {
 				}
 			}
 			if (a == EOF) {
-				fprintf(stderr, "err: File reached EOF in comment\n");
-				exit(1);
+				E_FATAL(ctx, 0, "File reached EOF in comment\n");
 			}
 		} else if (a == '/') {
 			while ((c = rh_getc(&ctx->file)), (c != EOF && c != '\n'));

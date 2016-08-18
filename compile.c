@@ -12,7 +12,7 @@ rh_asm_exp *rh_compile_exp_internal(rh_context *ctx, int priority) {
 			ctx->compile.token = rh_next_token(ctx);
 			return exp;
 		} else {
-			fprintf(stderr, "The token is not end symbol.\n");
+			E_FATAL(ctx, &ctx->compile.token, "This token is not end symbol.\n");
 			exit(1);
 		}
 	} else {
