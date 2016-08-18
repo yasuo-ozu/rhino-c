@@ -51,20 +51,46 @@ typedef struct rh_token {
 	char text[];	/* incomplete type */
 } rh_token;
 
+enum {/*{{{*/
+	CP_CAPITAL		= 1,	/* A-Z */
+	CP_LITERAL		= 2,	/* a-z */
+	CP_8DIGIT		= 4,	/* 01234567*/
+	CP_10DIGIT		= 8,	/* 0123456789 */
+	CP_16DIGIT		= 16,	/* 0123456789ABCDEFabcdef */
+	CP_SPACE		= 32,	/* isspace() */
+	CP_IDENT_FIRST	= 64,	/* _A-Za-z */
+	CP_IDENT		= 128,	/* _A-Za-z0-9 */
+	CP_SYMBOL		= 256	/* !"#$%&'()*+,-./:;<=>?p[\]^`{|}~ */
+} ctbl[0xFF];/*}}}*/
+
 /****************************************/
 /************** compile.c ***************/
 /****************************************/
-// typedef struct rh_asm_exp {
-// 	struct rh_asm_exp *arg1, *arg2, *arg3;
-// 	rh_token token;
-// } rh_asm_exp;
-// typedef struct {
-// 	rh_asm_exp *exp;
-// } rh_asm_global;
-// 
-// typedef struct {
-// 	rh_token token;
-// } rh_compile_context;
+
+typedef struct {
+	int children;			/* 0: literal, 1,2,3: expr */
+	unsigned char __stub[];	/* supress substantiation */
+} rh_asm_exp;
+
+typedef struct {
+	int children;
+	enum {
+		TYPE_INT, TYPE_DOUBLE
+	} type;
+	long long intval;
+	long double dblval;
+} rh_asm_exp_literal;
+
+typedef struct {
+	int children;
+	rh_token *token;
+	rh_asm_exp *items[5];
+} rh_asm_exp_terms;
+
+typedef struct {
+ 	rh_asm_exp *exp;
+} rh_asm_global;
+ 
 
 /****************************************/
 /**************** error.c ***************/
@@ -107,10 +133,10 @@ typedef struct {
 } rh_context;
 
 /* Defined in execute.c */
-// int rh_execute(rh_asm_global *global);
+int rh_execute(rh_asm_global *global);
 
 /* Defined in compile.c */
-// rh_asm_global rh_compile(rh_context *ctx);
+rh_asm_global rh_compile(rh_context *ctx);
 
 /* Defined in memory.c */
 // void rh_memman_init(rh_memman *man);

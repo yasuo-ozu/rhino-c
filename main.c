@@ -52,25 +52,28 @@ int rhino_main(int argc, char **argv) {
 		E_FATAL(&ctx, 0, "File open error: %s\n", fname);
 	}
 
-	rh_token_init();
-	rh_next_token(&ctx);
+	//rh_token_init();
+	//rh_next_token(&ctx);
 	// while (ctx.token->type != TKN_NULL) rh_next_token(&ctx);
+	
 
 	/* compile */
 	 rh_token_init();
 	 rh_asm_global global;
-	 ctx.compile.token = rh_next_token(&ctx);
+	E_NOTICE(&ctx, 0, "Begin compile...\n");
+	 rh_next_token(&ctx);
 	 global = rh_compile(&ctx);
-	 fclose(ctx.file.fp);
+	 fclose(ctx.file->fp);
 	 rh_error_dump(&ctx.error, stderr);
 
+	E_NOTICE(&ctx, 0, "Begin execute...\n");
 	// /* run */
-	// int ret;
-	// printf("Program ended with %d\n",  ret = rh_execute(&global));
+	 int ret;
+	 printf("Program ended with %d\n",  ret = rh_execute(&global));
 
 	// TODO: release rh_asm_exp s
 
-	// return (ret);
+	 return (ret);
 }
 
 int main(int argc, char **argv) {

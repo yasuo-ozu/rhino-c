@@ -18,18 +18,6 @@ void rh_dump_token(FILE *fp, rh_token *token) { /*{{{*/
 		token->ch2, token->byte1, token->byte2, token->text);
 } /*}}}*/
 
-enum {/*{{{*/
-	CP_CAPITAL		= 1,	/* A-Z */
-	CP_LITERAL		= 2,	/* a-z */
-	CP_8DIGIT		= 4,	/* 01234567*/
-	CP_10DIGIT		= 8,	/* 0123456789 */
-	CP_16DIGIT		= 16,	/* 0123456789ABCDEFabcdef */
-	CP_SPACE		= 32,	/* isspace() */
-	CP_IDENT_FIRST	= 64,	/* _A-Za-z */
-	CP_IDENT		= 128,	/* _A-Za-z0-9 */
-	CP_SYMBOL		= 256	/* !"#$%&'()*+,-./:;<=>?p[\]^`{|}~ */
-} ctbl[0xFF];/*}}}*/
-
 void rh_token_init() {/*{{{*/
 	int c;
 	char symbols[] = "!\"#$%&'()*+,-./:;<=>?p[\\]^`{|}~", *s;
@@ -86,10 +74,13 @@ void rh_next_token(rh_context *ctx) {/*{{{*/
 					token_size = token_size + 128;
 					token = realloc(token, token_size);
 				}
-				token->text[count++] = c;
+				token->text[count++] = (char) c;
 				c = rh_getchar(ctx, 0);
-			} while (ctbl[c] & CP_IDENT);
-			token->text[count] = '\0';
+			} while (ctbl[c] & CP_IDENT);	// TODO: 数値の指数に符号が入ってた時の処理
+			token->text[count] = 0;
+			token->text[count + 1] = 0;
+			// token->text[count + 2] = 0;
+			// token->text[count + 3] = 0;
 		} else if (c == '"' || c == '\'') {
 			a = c;		/* reserve starting symbol */
 			token->type = a == '"' ? TKN_STRING : TKN_CHAR;
@@ -125,9 +116,8 @@ void rh_next_token(rh_context *ctx) {/*{{{*/
 					if (c == '\0') break;
 					c = rh_getchar(ctx, 0);
 				}
-				if (c) {
-					count--;
-					while (count > 0) rh_ungetc(ctx->file, token->text[count--]);
+				if (count) {
+					while (count > 1) rh_ungetc(ctx->file, token->text[--count]);
 					c = a; count = 0;
 				} else break;
 			}
