@@ -6,4 +6,5 @@ rhino
 *.vcxproj.*
 .vs
 Debug
+depends
 
