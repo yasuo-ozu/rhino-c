@@ -75,12 +75,19 @@ void rh_next_token(rh_context *ctx) {/*{{{*/
 					token = realloc(token, token_size);
 				}
 				token->text[count++] = (char) c;
-				c = rh_getchar(ctx, 0);
-			} while (ctbl[c] & CP_IDENT);	// TODO: 数値の指数に符号が入ってた時の処理
+				if (token->type == TKN_NUMERIC && (c == 'e' || c == 'E' || c == 'p' || c == 'P')) {
+					c = rh_getchar(ctx, 0);
+					if (c == '+' || c == '-') {
+						token->text[count++] = (char) c;
+						c = rh_getchar(ctx, 0);
+					}
+				} else c = rh_getchar(ctx, 0);
+				if (token->type == TKN_NUMERIC && c == '.') {
+					token->text[count++] = (char) c;
+					c = rh_getchar(ctx, 0);
+				}
+			} while (ctbl[c] & CP_IDENT);
 			token->text[count] = 0;
-			token->text[count + 1] = 0;
-			// token->text[count + 2] = 0;
-			// token->text[count + 3] = 0;
 		} else if (c == '"' || c == '\'') {
 			a = c;		/* reserve starting symbol */
 			token->type = a == '"' ? TKN_STRING : TKN_CHAR;
@@ -135,107 +142,5 @@ void rh_next_token(rh_context *ctx) {/*{{{*/
 	token->prev = ctx->token;
 	ctx->token = token;
 }/*}}}*/
-			/*
-			token.kind = TK_VAL;
-			token.type = TYPE_SINT;
-			int is_16shin = 0;		// 16-shin flag
-			if (c == '0') {
-				c = rh_getchar(ctx, 0);
-				if (ctbl[c] & CP_X) {
-					is_16shin = 1;
-					c = rh_getchar(ctx, 0);
-					for (;;) {
-						if (ctbl[c] & CP_10DIGIT) i = c - '0';
-						else if (ctbl[c] & CP_16DIGIT) 
-							i = c - (ctbl[c] & CP_CAPITAL ? 'A' : 'a') + 10;
-						else break;
-						token.val_int = token.val_int * 16 + i; 
-						c = rh_getchar(ctx, 0);
-					}
-					token.val_float = (float) token.val_int;
-				} else {
-					// 8-shin number (or 0) 
-					i = 0;
-					while (ctbl[c] & CP_8DIGIT) {
-						i = i * 8 + (c - '0');
-						c = rh_getchar(ctx, 0);
-					}
-					token.val_float = token.val_int = i;
-				}
-			} else {
-				i = 0;
-				while (ctbl[c] & CP_10DIGIT) {
-					i = i * 10 + (c - '0');
-					c = rh_getchar(ctx, 0);
-				}
-				token.val_float = token.val_int = i;
-			}
-			if (c == '.') {
-				token.type = TYPE_DOUBLE;
-				i = 10;
-				c = rh_getchar(ctx, 0);
-				while (ctbl[c] & CP_10DIGIT) {
-					token.val_float += (c - '0') / (double) i;
-					i *= 10;
-					c = rh_getchar(ctx, 0);
-				}
-			}
-			if (is_16shin && ctbl[c] & CP_P || !is_16shin && ctbl[c] & CP_E) {
-				c = rh_getchar(ctx, 0);
-				j = c == '-' ? -1 : 1;
-				a = 0;
-				if (c == '-' || c == '+') a = c, c = rh_getchar(ctx, 0);
-				if (ctbl[c] & CP_10DIGIT) {
-					i = 0;
-					do {
-						i = i * 10 + (c - '0');
-						c = rh_getchar(ctx, 0);
-					} while (ctbl[c] & CP_10DIGIT);
-					d = j < 0 ? 0.1 : 10.0;
-					for (; i; i--) {
-						token.val_int *= d;
-						token.val_float *= d;
-					}
-					token.type = TYPE_DOUBLE;
-				} else {
-					fprintf(stderr, "err: Value power must be integer\n");
-					exit(1);
-					if (a) {
-						rh_ungetc(&ctx->file, c);
-						c = a;
-					}
-				}
-			}
-			for (;;) {
-				if (ctbl[c] & CP_L) {
-					a = rh_getchar(ctx, 0);
-					if (ctbl[a] & CP_L && token.type == TYPE_SINT) {
-						token.type = TYPE_SLLONG;
-					} else {
-						rh_ungetc(&ctx->file, a);
-						if (token.type == TYPE_SINT) token.type = TYPE_SLONG;
-						else if (token.type == TYPE_DOUBLE) token.type = TYPE_LDOUBLE;
-						else {
-							fprintf(stderr, "err: Missing in flag l\n");
-							exit(1);
-						}
-					}
-				}else if (ctbl[c] & CP_U && token.type & 1) {
-					if (token.type & 16) {
-						fprintf(stderr, "err: Missing in flag u\n");
-						exit(1);
-					} else {
-						token.type &= 16;
-					}
-				} else if (ctbl[c] & CP_F && token.type == TYPE_DOUBLE) {
-					token.type = TYPE_FLOAT;
-				} else break;
-				c = rh_getchar(ctx, 0);
-			}
-			if (ctbl[c] & CP_IDENT) {
-				fprintf(stderr, "err: Missing in flag\n");
-				exit(1);
-			}
-			*/
 
 /* vim: set foldmethod=marker : */

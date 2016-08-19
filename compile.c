@@ -56,8 +56,8 @@ rh_asm_exp *create_exp_from_token(rh_context *ctx) {/*{{{*/
 		if (is_hexadecimal && (*c == 'P' || *c == 'p') || !is_hexadecimal && (*c == 'E' || *c == 'e')) {
 			exp_literal->type = TYPE_DOUBLE;
 			c++;
-			val_ld = *c == '-' ? 0.1 : 1.0;
-			if (*c == '-' || *c == '+') c++;	// token.cの問題よりまだ扱えない
+			val_ld = *c == '-' ? 0.1 : 10.0;
+			if (*c == '-' || *c == '+') c++;
 			if (ctbl[*c] & CP_10DIGIT) {
 				val_ll = 0;
 				do val_ll = val_ll * 10 + (*c++ - '0'); while (ctbl[*c] & CP_10DIGIT);
@@ -170,6 +170,58 @@ rh_asm_exp *rh_compile_exp(rh_context *ctx) {
 }
 // TODO: rh_compile_func, rh_compile_statment
 
+rh_asm_statment *rh_compile_statment(rh_context *ctx) {
+	rh_asm_statment *statment = malloc(sizeof(rh_asm_statment));
+	statment->exp = NULL;
+	statment->next = NULL;
+	statment->statment = NULL;
+	
+	if (strcmp(ctx->token->text, "if") == 0) {
+		statment->type = STAT_IF;
+		rh_next_token(ctx);
+		if (strcmp(ctx->token->text, "(") != 0) {
+			E_ERROR(ctx, ctx->token, "requires '(' after 'if'");
+		} else {
+			rh_next_token(ctx);
+		}
+		statment->exp = rh_compile_exp(ctx);
+		if (strcmp(ctx->token->text, ")") != 0) {
+			E_ERROR(ctx, ctx->token, "requires ')'");
+		} else {
+			rh_next_token(ctx);
+		}
+		statment->statment = rh_compile_statment(ctx);
+	} else if (strcmp(ctx->token->text, "{") == 0) {
+		statment->type = STAT_COMPOUND;
+		rh_next_token(ctx);
+		rh_asm_statment *st, *last;
+		while (ctx->token->type != TKN_NULL && strcmp(ctx->token->text, "}") == 0) {
+			st = rh_compile_statment(ctx);
+			if (statment->statment == NULL) {
+				statment->statment = st;
+			} else {
+				last->next = st;
+			}
+			last = st;
+		}
+		if (strcmp(ctx->token->text, "}") != 0) {
+			E_ERROR(ctx, ctx->token, "requires '}'");
+		} else {
+			rh_next_token(ctx);
+		}
+	} else if (strcmp(ctx->token->text, ";") == 0) {
+		statment->type = STAT_BLANK;
+	} else {
+		statment->type = STAT_EXPRESSION;
+		statment->exp = rh_compile_exp(ctx);
+		if (strcmp(ctx->token->text, ";") != 0) {
+			E_ERROR(ctx, ctx->token, "requires ';'");
+		} else rh_next_token(ctx);
+	}
+
+	return statment;
+}
+
 rh_asm_global rh_compile_global(rh_context *ctx) {
 	rh_asm_global global;
 	global.exp = rh_compile_exp(ctx);
@@ -180,7 +232,5 @@ rh_asm_global rh_compile_global(rh_context *ctx) {
 rh_asm_global rh_compile(rh_context *ctx) {
 	return rh_compile_global(ctx);
 }
-
-
 
 /* vim: set foldmethod=marker : */

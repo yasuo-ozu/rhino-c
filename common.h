@@ -87,6 +87,15 @@ typedef struct {
 	rh_asm_exp *items[5];
 } rh_asm_exp_terms;
 
+typedef struct rh_asm_statment {
+	enum {
+		STAT_BLANK, STAT_EXPRESSION, STAT_IF, STAT_COMPOUND
+	} type;
+	struct rh_asm_statment *next;
+	rh_asm_exp *exp; // EXP / IF
+	struct rh_asm_statment *statment;	// IF / COMPOUND
+} rh_asm_statment;
+
 typedef struct {
  	rh_asm_exp *exp;
 } rh_asm_global;
