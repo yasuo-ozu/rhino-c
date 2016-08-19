@@ -58,18 +58,18 @@ int rhino_main(int argc, char **argv) {
 	
 
 	/* compile */
-	 rh_token_init();
-	 rh_asm_global global;
+	rh_token_init();
+	rh_asm_global *global;
 	E_NOTICE(&ctx, 0, "Begin compile...\n");
-	 rh_next_token(&ctx);
-	 global = rh_compile(&ctx);
-	 fclose(ctx.file->fp);
-	 rh_error_dump(&ctx.error, stderr);
+	rh_next_token(&ctx);
+	global = rh_compile(&ctx);
+	fclose(ctx.file->fp);
+	rh_error_dump(&ctx.error, stderr);
 
 	E_NOTICE(&ctx, 0, "Begin execute...\n");
 	// /* run */
 	 int ret;
-	 printf("Program ended with %d\n",  ret = rh_execute(&global));
+	 printf("Program ended with %d\n",  ret = rh_execute(&ctx, global));
 
 	// TODO: release rh_asm_exp s
 

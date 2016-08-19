@@ -193,7 +193,7 @@ rh_asm_statment *rh_compile_statment(rh_context *ctx) {
 		statment->type = STAT_COMPOUND;
 		rh_next_token(ctx);
 		rh_asm_statment *st, *last;
-		while (ctx->token->type != TKN_NULL && strcmp(ctx->token->text, "}") == 0) {
+		while (ctx->token->type != TKN_NULL && strcmp(ctx->token->text, "}") != 0) {
 			st = rh_compile_statment(ctx);
 			if (statment->statment == NULL) {
 				statment->statment = st;
@@ -214,14 +214,21 @@ rh_asm_statment *rh_compile_statment(rh_context *ctx) {
 	return statment;
 }
 
-rh_asm_global rh_compile_global(rh_context *ctx) {
-	rh_asm_global global;
-	global.exp = rh_compile_exp(ctx);
-
+rh_asm_global *rh_compile_global(rh_context *ctx) {
+	rh_asm_global *global = rh_malloc(sizeof(rh_asm_global));
+	//global.exp = rh_compile_exp(ctx);
+	global->statment = NULL;
+	rh_asm_statment *st, *last;
+	while (ctx->token->type != TKN_NULL) {
+		st = rh_compile_statment(ctx);
+		if (global->statment == NULL) global->statment = st;
+		else last->next = st;
+		last = st;
+	}
 	return global;
 }
 
-rh_asm_global rh_compile(rh_context *ctx) {
+rh_asm_global *rh_compile(rh_context *ctx) {
 	return rh_compile_global(ctx);
 }
 

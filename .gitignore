@@ -7,4 +7,5 @@ rhino
 .vs
 Debug
 depends
+Session.vim
 

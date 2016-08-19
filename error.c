@@ -21,8 +21,8 @@ void rh_error_dump(rh_error_context *err, FILE *fp) {
 			}
 			fputc(c, fp);
 		}
+		fprintf(fp, "\n");
 	}
-	fprintf(fp, "\n");
 }
 /*
 int rh_error_init(rh_error_context *err, char *lang) {

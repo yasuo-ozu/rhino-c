@@ -94,7 +94,8 @@ typedef struct rh_asm_statment {
 } rh_asm_statment;
 
 typedef struct {
- 	rh_asm_exp *exp;
+ 	//rh_asm_exp *exp;
+	rh_asm_statment *statment;
 } rh_asm_global;
  
 
@@ -139,10 +140,10 @@ typedef struct {
 } rh_context;
 
 /* Defined in execute.c */
-int rh_execute(rh_asm_global *global);
+int rh_execute(rh_context *ctx, rh_asm_global *global);
 
 /* Defined in compile.c */
-rh_asm_global rh_compile(rh_context *ctx);
+rh_asm_global *rh_compile(rh_context *ctx);
 
 /* Defined in memory.c */
 // void rh_memman_init(rh_memman *man);
