@@ -122,7 +122,7 @@ int get_priority(rh_token *token) {/*{{{*/
 	return -1;
 }/*}}}*/
 
-void dump_expression(rh_asm_exp *exp) {
+void dump_expression(rh_asm_exp *exp) {/*{{{*/
 	if (exp->type == EXP_LITERAL) {
 		printf("  %d  ", exp->literal.intval);
 	} else {
@@ -132,7 +132,7 @@ void dump_expression(rh_asm_exp *exp) {
 		dump_expression(exp->op.exp[1]);
 		printf(" > ");
 	}
-}
+}/*}}}*/
 
 // ref: http://www.bohyoh.com/CandCPP/C/operator.html
 rh_asm_exp *rh_compile_exp_internal(rh_context *ctx, int priority) {
@@ -164,6 +164,18 @@ rh_asm_exp *rh_compile_exp(rh_context *ctx) {
 }
 // TODO: rh_compile_func, rh_compile_statment
 
+void error_with_token(rh_context *ctx, char *require, char *after) {
+	if (strcmp(ctx->token->text, require) != 0) {
+		if (after) {
+			E_ERROR(ctx, ctx->token, "requires '%s' after '%s'", require, after);
+		} else {
+			E_ERROR(ctx, ctx->token, "requires '%s'", require);
+		}
+	} else {
+		rh_next_token(ctx);
+	}
+}
+
 rh_asm_statment *rh_compile_statment(rh_context *ctx) {
 	rh_asm_statment *statment = malloc(sizeof(rh_asm_statment));
 	statment->exp = NULL;
@@ -173,17 +185,9 @@ rh_asm_statment *rh_compile_statment(rh_context *ctx) {
 	if (strcmp(ctx->token->text, "if") == 0) {
 		statment->type = STAT_IF;
 		rh_next_token(ctx);
-		if (strcmp(ctx->token->text, "(") != 0) {
-			E_ERROR(ctx, ctx->token, "requires '(' after 'if'");
-		} else {
-			rh_next_token(ctx);
-		}
+		error_with_token(ctx, "(", "if");
 		statment->exp = rh_compile_exp(ctx);
-		if (strcmp(ctx->token->text, ")") != 0) {
-			E_ERROR(ctx, ctx->token, "requires ')'");
-		} else {
-			rh_next_token(ctx);
-		}
+		error_with_token(ctx, ")", 0);
 		statment->statment = rh_compile_statment(ctx);
 	} else if (strcmp(ctx->token->text, "{") == 0) {
 		statment->type = STAT_COMPOUND;
@@ -198,19 +202,13 @@ rh_asm_statment *rh_compile_statment(rh_context *ctx) {
 			}
 			last = st;
 		}
-		if (strcmp(ctx->token->text, "}") != 0) {
-			E_ERROR(ctx, ctx->token, "requires '}'");
-		} else {
-			rh_next_token(ctx);
-		}
+		error_with_token(ctx, "}", 0);
 	} else if (strcmp(ctx->token->text, ";") == 0) {
 		statment->type = STAT_BLANK;
 	} else {
 		statment->type = STAT_EXPRESSION;
 		statment->exp = rh_compile_exp(ctx);
-		if (strcmp(ctx->token->text, ";") != 0) {
-			E_ERROR(ctx, ctx->token, "requires ';'");
-		} else rh_next_token(ctx);
+		error_with_token(ctx, ";", 0);
 	}
 
 	return statment;
