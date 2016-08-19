@@ -8,4 +8,6 @@ rhino
 Debug
 depends
 Session.vim
+scsc.c
+scsc
 

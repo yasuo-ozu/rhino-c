@@ -7,6 +7,7 @@ int rhino_main(int argc, char **argv) {
 
 	ctx.file = NULL;
 	ctx.token = NULL;
+	ctx.type_top = NULL;
 
 	ctx.error.errors = 0;
 	if (setjmp(ctx.error.jmpbuf)) {

@@ -96,11 +96,37 @@ rh_asm_exp *create_exp_from_token(rh_context *ctx) {/*{{{*/
 			E_ERROR(ctx, ctx->token, "Missing in flag\n");
 		}
 	} else {
-		E_FATAL(ctx, 0, "Invalid literal type\n");
+		rh_type *tp = ctx->type_top;
+		while (tp) {
+			if (strcmp(ctx->token->text, tp->token->text) == 0) {
+				exp->type = EXP_VARIABLE;
+				exp->var = tp;
+				break;
+			}
+			tp = tp->next;
+		}
+		if (!tp) {
+			E_FATAL(ctx, ctx->token, "Invalid identifier\n");
+		}
 	}
 	return exp;
 
 }/*}}}*/
+
+rh_type *get_type(rh_context *ctx) {
+	rh_type *type = rh_malloc(sizeof(rh_type));
+	type->kind = TK_NULL;
+	type->token = NULL;
+	if (strcmp(ctx->token->text, "int") == 0) {
+		type->kind = TK_INT;
+		rh_next_token(ctx);
+	}
+	if (type->kind != TK_NULL && ctx->token->type == TKN_IDENT) {
+		type->token = ctx->token;
+		rh_next_token(ctx);
+	}
+	return type;
+}
 
 int get_priority(rh_token *token) {/*{{{*/
 	struct {
@@ -111,6 +137,7 @@ int get_priority(rh_token *token) {/*{{{*/
 		{"%", 4},
 		{"+", 5},
 		{"-", 5},
+		{"=", 15},
 		{0, 0}
 	};
 	int i;
@@ -176,8 +203,9 @@ void error_with_token(rh_context *ctx, char *require, char *after) {
 	}
 }
 
-rh_asm_statment *rh_compile_statment(rh_context *ctx) {
+rh_asm_statment *rh_compile_statment(rh_context *ctx, int level) {
 	rh_asm_statment *statment = malloc(sizeof(rh_asm_statment));
+	rh_type *type;
 	statment->next = NULL;
 	if (strcmp(ctx->token->text, "if") == 0) {
 		statment->type = STAT_IF;
@@ -185,19 +213,19 @@ rh_asm_statment *rh_compile_statment(rh_context *ctx) {
 		error_with_token(ctx, "(", "if");
 		statment->exp[0] = rh_compile_exp(ctx);
 		error_with_token(ctx, ")", 0);
-		statment->statment[0] = rh_compile_statment(ctx);
+		statment->statment[0] = rh_compile_statment(ctx, level);
 		if (strcmp(ctx->token->text, "else") == 0) {
 			rh_next_token(ctx);
-			statment->statment[1] = rh_compile_statment(ctx);
+			statment->statment[1] = rh_compile_statment(ctx, level);
 		} else statment->statment[1] = NULL;
 	} else if (strcmp(ctx->token->text, "{") == 0) {
 		statment->type = STAT_COMPOUND;
 		rh_next_token(ctx);
-		rh_asm_statment *st, *last;
+		rh_asm_statment *st, *last = NULL;
 		while (ctx->token->type != TKN_NULL && strcmp(ctx->token->text, "}") != 0) {
-			st = rh_compile_statment(ctx);
-			if (statment->statment[0] == NULL) {
-				statment->statment[0] = st;
+			st = rh_compile_statment(ctx, level + 1);
+			if (last == NULL) {
+				statment->statment[0] = last = st;
 			} else {
 				last->next = st;
 			}
@@ -206,12 +234,28 @@ rh_asm_statment *rh_compile_statment(rh_context *ctx) {
 		error_with_token(ctx, "}", 0);
 	} else if (strcmp(ctx->token->text, ";") == 0) {
 		statment->type = STAT_BLANK;
+	} else if ((type = get_type(ctx))->kind != TK_NULL) {
+		statment->type = STAT_BLANK;
+		rh_type *tp = ctx->type_top;
+		while (tp) {
+			if (tp->level != level || strcmp(tp->token->text, type->token->text) == 0) break;
+			tp = tp->next;
+		}
+		if (tp && tp->level == level) {
+			rh_free(type);
+			E_ERROR(ctx, type->token, "The name '%s' already exists.", type->token->text);
+		} else {
+			type->next = ctx->type_top;
+			type->level = level;
+			ctx->type_top = type;
+		}
+		error_with_token(ctx, ";", 0);
 	} else {
+		rh_free(type);
 		statment->type = STAT_EXPRESSION;
 		statment->exp[0] = rh_compile_exp(ctx);
 		error_with_token(ctx, ";", 0);
 	}
-
 	return statment;
 }
 
@@ -221,7 +265,7 @@ rh_asm_global *rh_compile_global(rh_context *ctx) {
 	global->statment = NULL;
 	rh_asm_statment *st, *last;
 	while (ctx->token->type != TKN_NULL) {
-		st = rh_compile_statment(ctx);
+		st = rh_compile_statment(ctx, 0);
 		if (global->statment == NULL) global->statment = st;
 		else last->next = st;
 		last = st;

@@ -64,12 +64,32 @@ enum {/*{{{*/
 } ctbl[0xFF];/*}}}*/
 
 /****************************************/
+/**************** type.c ***************/
+/****************************************/
+
+typedef struct rh_type {
+	enum {
+		TK_NULL = 0,
+		TK_CONST, TK_VOLATILE, TK_VOID, TK_CHAR, TK_SHORT, TK_INT, TK_LONG, TK_FLOAT, TK_DOUBLE, TK_SIGNED, TK_UNSIGNED,
+		TK_STRUCT, TK_ENUM, TK_TYPEDEF_NAME, TK_AUTO, TK_REGISTER, TK_STATIC, TK_EXTERN, TK_TYPEDEF
+	} kind;
+	// int size;
+	// struct rh_type *child;
+	// char *name;				// TYPEDEF_NAME / STRUCT / ENUM
+	rh_token *token;		// ident
+	struct rh_type *next;
+	long long intval;
+	long double dblval;
+	int level;
+} rh_type;
+
+/****************************************/
 /************** compile.c ***************/
 /****************************************/
 
 typedef struct rh_asm_exp {
 	enum {
-		EXP_LITERAL = 0, EXP_PREOP, EXP_POSTOP, EXP_BINARYOP, EXP_CONDOP
+		EXP_LITERAL = 0, EXP_VARIABLE, EXP_PREOP, EXP_POSTOP, EXP_BINARYOP, EXP_CONDOP
 	} type;
 	struct {
 		enum {
@@ -82,6 +102,7 @@ typedef struct rh_asm_exp {
 		rh_token *token;
 		struct rh_asm_exp *exp[2];
 	} op;
+	rh_type *var;		// VARIABLE
 } rh_asm_exp;
 
 typedef struct rh_asm_statment {
@@ -98,7 +119,6 @@ typedef struct {
 	rh_asm_statment *statment;
 } rh_asm_global;
  
-
 /****************************************/
 /**************** error.c ***************/
 /****************************************/
@@ -137,6 +157,7 @@ typedef struct {
 	// rh_compile_context compile;
 	rh_token *token;
 	rh_error_context error;
+	rh_type *type_top;
 } rh_context;
 
 /* Defined in execute.c */
