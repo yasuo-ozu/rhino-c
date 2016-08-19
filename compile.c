@@ -178,25 +178,26 @@ void error_with_token(rh_context *ctx, char *require, char *after) {
 
 rh_asm_statment *rh_compile_statment(rh_context *ctx) {
 	rh_asm_statment *statment = malloc(sizeof(rh_asm_statment));
-	statment->exp = NULL;
 	statment->next = NULL;
-	statment->statment = NULL;
-	
 	if (strcmp(ctx->token->text, "if") == 0) {
 		statment->type = STAT_IF;
 		rh_next_token(ctx);
 		error_with_token(ctx, "(", "if");
-		statment->exp = rh_compile_exp(ctx);
+		statment->exp[0] = rh_compile_exp(ctx);
 		error_with_token(ctx, ")", 0);
-		statment->statment = rh_compile_statment(ctx);
+		statment->statment[0] = rh_compile_statment(ctx);
+		if (strcmp(ctx->token->text, "else") == 0) {
+			rh_next_token(ctx);
+			statment->statment[1] = rh_compile_statment(ctx);
+		} else statment->statment[1] = NULL;
 	} else if (strcmp(ctx->token->text, "{") == 0) {
 		statment->type = STAT_COMPOUND;
 		rh_next_token(ctx);
 		rh_asm_statment *st, *last;
 		while (ctx->token->type != TKN_NULL && strcmp(ctx->token->text, "}") != 0) {
 			st = rh_compile_statment(ctx);
-			if (statment->statment == NULL) {
-				statment->statment = st;
+			if (statment->statment[0] == NULL) {
+				statment->statment[0] = st;
 			} else {
 				last->next = st;
 			}
@@ -207,7 +208,7 @@ rh_asm_statment *rh_compile_statment(rh_context *ctx) {
 		statment->type = STAT_BLANK;
 	} else {
 		statment->type = STAT_EXPRESSION;
-		statment->exp = rh_compile_exp(ctx);
+		statment->exp[0] = rh_compile_exp(ctx);
 		error_with_token(ctx, ";", 0);
 	}
 

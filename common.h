@@ -89,8 +89,8 @@ typedef struct rh_asm_statment {
 		STAT_BLANK, STAT_EXPRESSION, STAT_IF, STAT_COMPOUND
 	} type;
 	struct rh_asm_statment *next;
-	rh_asm_exp *exp; // EXP / IF
-	struct rh_asm_statment *statment;	// IF / COMPOUND
+	rh_asm_exp *exp[3]; // EXP / IF
+	struct rh_asm_statment *statment[3];	// IF / COMPOUND
 } rh_asm_statment;
 
 typedef struct {

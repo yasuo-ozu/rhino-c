@@ -20,13 +20,14 @@ int rh_execute_exp(rh_context *ctx, rh_asm_exp *exp) {
 
 void rh_execute_statment(rh_context *ctx, rh_asm_statment *statment) {
 	if (statment->type == STAT_IF) {
-		if (rh_execute_exp(ctx, statment->exp)) {
-			rh_execute_statment(ctx, statment->statment);
-		}
+		if (rh_execute_exp(ctx, statment->exp[0])) 
+			rh_execute_statment(ctx, statment->statment[0]);
+		else if (statment->statment[1])
+			rh_execute_statment(ctx, statment->statment[1]);
 	} else if (statment->type == STAT_EXPRESSION) {
-		printf("# %d\n", rh_execute_exp(ctx, statment->exp));
+		printf("# %d\n", rh_execute_exp(ctx, statment->exp[0]));
 	} else if (statment->type == STAT_COMPOUND) {
-		rh_asm_statment *s = statment->statment;
+		rh_asm_statment *s = statment->statment[0];
 		while (s) rh_execute_statment(ctx, s), s = s->next;
 	} else if (statment->type == STAT_BLANK) {
 		/* do nothing */
