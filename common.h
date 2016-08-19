@@ -67,25 +67,22 @@ enum {/*{{{*/
 /************** compile.c ***************/
 /****************************************/
 
-typedef struct {
-	int children;			/* 0: literal, 1,2,3: expr */
-	unsigned char __stub[];	/* supress substantiation */
-} rh_asm_exp;
-
-typedef struct {
-	int children;
+typedef struct rh_asm_exp {
 	enum {
-		TYPE_INT, TYPE_DOUBLE
+		EXP_LITERAL = 0, EXP_PREOP, EXP_POSTOP, EXP_BINARYOP, EXP_CONDOP
 	} type;
-	long long intval;
-	long double dblval;
-} rh_asm_exp_literal;
-
-typedef struct {
-	int children;
-	rh_token *token;
-	rh_asm_exp *items[5];
-} rh_asm_exp_terms;
+	struct {
+		enum {
+			TYPE_INT, TYPE_DOUBLE
+		} type;
+		long long intval;
+		long double dblval;
+	} literal;
+	struct {
+		rh_token *token;
+		struct rh_asm_exp *exp[2];
+	} op;
+} rh_asm_exp;
 
 typedef struct rh_asm_statment {
 	enum {
@@ -152,6 +149,9 @@ rh_asm_global rh_compile(rh_context *ctx);
 // void rh_memman_free(rh_memman *man);
 // void rh_dump_memory_usage(FILE *fp, rh_memman *man);
 // rh_size_t rh_malloc_type(rh_memman *man, rh_size_t size, rh_mem_type type);
+void *rh_malloc(size_t size);
+void rh_free(void *p);
+void *rh_realloc(void *p, size_t size);
 
 /* Defined in token.c */
 void rh_token_init();

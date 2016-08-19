@@ -1,17 +1,17 @@
 #include "common.h"
 
-// void *rh_malloc(size_t size) {
-// 	return malloc(size);
-// }
-// 
-// void rh_free(void *p) {
-// 	free(p);
-// }
-// 
-// void *rh_realloc(void *p, size_t size) {
-// 	return realloc(p, size);
-// }
-// 
+void *rh_malloc(size_t size) {
+	return malloc(size);
+}
+
+void rh_free(void *p) {
+	free(p);
+}
+
+void *rh_realloc(void *p, size_t size) {
+	return realloc(p, size);
+}
+
 // void rh_memman_init(rh_memman *man) {
 // 	int i;
 // 	man->tanks = 0;

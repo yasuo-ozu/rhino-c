@@ -6,16 +6,13 @@ rh_asm_exp *create_exp_from_token(rh_context *ctx) {/*{{{*/
 	long long val_ll = 0;
 	long double val_ld = 0.0;
 	int i, j, a;
-	rh_asm_exp *exp;
+	rh_asm_exp *exp = rh_malloc(sizeof(rh_asm_exp));
 	if (ctx->token->type == TKN_NUMERIC) {
-		rh_asm_exp_literal *exp_literal = malloc(sizeof(rh_asm_exp_literal));
-		exp = (rh_asm_exp *) exp_literal;
-		exp_literal->children = 0;
-		exp_literal->intval = 0;
-		exp_literal->dblval = 0.0;
-		exp_literal->type = TYPE_INT;
+		exp->type = EXP_LITERAL;
+		exp->literal.intval = 0;
+		exp->literal.dblval = 0.0;
+		exp->literal.type = TYPE_INT;
 		int is_hexadecimal = 0;
-
 		if (*c == '0') {
 			c++;
 			if (*c == 'x' || *c == 'X') {
@@ -26,35 +23,35 @@ rh_asm_exp *create_exp_from_token(rh_context *ctx) {/*{{{*/
 					else if (ctbl[*c] & CP_16DIGIT) 
 						val_ll = *c - (ctbl[*c] & CP_CAPITAL ? 'A' : 'a') + 10;
 					else break;
-					exp_literal->intval = exp_literal->intval * 16 + val_ll; 
+					exp->literal.intval = exp->literal.intval * 16 + val_ll; 
 					c++;
 				}
-				exp_literal->dblval = (long double) exp_literal->intval;
+				exp->literal.dblval = (long double) exp->literal.intval;
 			} else {	// octadecimal number or 0
 				while (ctbl[*c] & CP_8DIGIT) {
-					exp_literal->intval = exp_literal->intval * 8 + (*c - '0');
+					exp->literal.intval = exp->literal.intval * 8 + (*c - '0');
 					c++;
 				}
 			}
 		} else {
 			while (ctbl[*c] & CP_10DIGIT) {
-				exp_literal->intval = exp_literal->intval * 10 + (*c - '0');
+				exp->literal.intval = exp->literal.intval * 10 + (*c - '0');
 				c++;
 			}
 		}
 		if (*c == '.') {
-			exp_literal->type = TYPE_DOUBLE;
-			exp_literal->dblval = (long double) exp_literal->intval;
+			exp->literal.type = TYPE_DOUBLE;
+			exp->literal.dblval = (long double) exp->literal.intval;
 			val_ll = 10;
 			c++;
 			while (ctbl[*c] & CP_10DIGIT) {
-				exp_literal->dblval += (*c - '0') / (double) val_ll;
+				exp->literal.dblval += (*c - '0') / (double) val_ll;
 				val_ll *= 10;
 				c++;
 			}
 		}
 		if (is_hexadecimal && (*c == 'P' || *c == 'p') || !is_hexadecimal && (*c == 'E' || *c == 'e')) {
-			exp_literal->type = TYPE_DOUBLE;
+			exp->literal.type = TYPE_DOUBLE;
 			c++;
 			val_ld = *c == '-' ? 0.1 : 10.0;
 			if (*c == '-' || *c == '+') c++;
@@ -62,8 +59,8 @@ rh_asm_exp *create_exp_from_token(rh_context *ctx) {/*{{{*/
 				val_ll = 0;
 				do val_ll = val_ll * 10 + (*c++ - '0'); while (ctbl[*c] & CP_10DIGIT);
 				for (; val_ll; val_ll--) {
-					exp_literal->intval *= val_ld;
-					exp_literal->dblval *= val_ld;
+					exp->literal.intval *= val_ld;
+					exp->literal.dblval *= val_ld;
 				}
 			} else {
 				E_ERROR(ctx, ctx->token, "Value power must be integer\n");
@@ -126,15 +123,13 @@ int get_priority(rh_token *token) {/*{{{*/
 }/*}}}*/
 
 void dump_expression(rh_asm_exp *exp) {
-	if (exp->children == 0) {
-		rh_asm_exp_literal *exp_literal = (rh_asm_exp_literal *) exp;
-		printf("  %d  ", exp_literal->intval);
+	if (exp->type == EXP_LITERAL) {
+		printf("  %d  ", exp->literal.intval);
 	} else {
-		rh_asm_exp_terms *exp_terms = (rh_asm_exp_terms *) exp;
 		printf(" < ");
-		dump_expression(exp_terms->items[0]);
+		dump_expression(exp->op.exp[0]);
 		printf(" , ");
-		dump_expression(exp_terms->items[1]);
+		dump_expression(exp->op.exp[1]);
 		printf(" > ");
 	}
 }
@@ -142,7 +137,6 @@ void dump_expression(rh_asm_exp *exp) {
 // ref: http://www.bohyoh.com/CandCPP/C/operator.html
 rh_asm_exp *rh_compile_exp_internal(rh_context *ctx, int priority) {
 	rh_asm_exp *exp, *exp1, *exp2;
-	rh_asm_exp_terms *exp_terms;
 	rh_token *token;
 	int has_op = 0;
 	if (priority == 0) {
@@ -155,11 +149,11 @@ rh_asm_exp *rh_compile_exp_internal(rh_context *ctx, int priority) {
 			rh_next_token(ctx);
 			exp2 = rh_compile_exp_internal(ctx, priority - 1);
 			exp1 = exp;
-			exp_terms = malloc(sizeof(rh_asm_exp_terms));
-			exp = (rh_asm_exp *) exp_terms;
-			exp_terms->token = token;
-			exp_terms->items[0] = exp1; exp_terms->items[1] = exp2;
-			exp->children = 2;
+			exp = malloc(sizeof(rh_asm_exp));
+			exp->op.token = token;
+			exp->op.exp[0] = exp1;
+			exp->op.exp[1] = exp2;
+			exp->type = EXP_BINARYOP;
 		}
 	}
 	return exp;

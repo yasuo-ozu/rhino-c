@@ -2,19 +2,17 @@
 
 // 本来式オブジェクトを返すべき
 int rh_execute_exp(rh_asm_exp *exp) {
-	if (exp->children == 0) {
-		rh_asm_exp_literal *exp_literal = (rh_asm_exp_literal *) exp;
-		return exp_literal->intval;
+	if (exp->type == EXP_LITERAL) {
+		return exp->literal.intval;
 	} else {
-		rh_asm_exp_terms *exp_terms = (rh_asm_exp_terms *) exp;
-		if (exp_terms->token->text[0] == '+') return rh_execute_exp(exp_terms->items[0]) + rh_execute_exp(exp_terms->items[1]);
-		else if (exp_terms->token->text[0] == '-') return rh_execute_exp(exp_terms->items[0]) - rh_execute_exp(exp_terms->items[1]);
-		else if (exp_terms->token->text[0] == '*') return rh_execute_exp(exp_terms->items[0]) * rh_execute_exp(exp_terms->items[1]);
-		else if (exp_terms->token->text[0] == '/') return rh_execute_exp(exp_terms->items[0]) / rh_execute_exp(exp_terms->items[1]);
-		else if (exp_terms->token->text[0] == '%') return rh_execute_exp(exp_terms->items[0]) % rh_execute_exp(exp_terms->items[1]);
+		if (exp->op.token->text[0] == '+') return rh_execute_exp(exp->op.exp[0]) + rh_execute_exp(exp->op.exp[1]);
+		else if (exp->op.token->text[0] == '-') return rh_execute_exp(exp->op.exp[0]) - rh_execute_exp(exp->op.exp[1]);
+		else if (exp->op.token->text[0] == '*') return rh_execute_exp(exp->op.exp[0]) * rh_execute_exp(exp->op.exp[1]);
+		else if (exp->op.token->text[0] == '/') return rh_execute_exp(exp->op.exp[0]) / rh_execute_exp(exp->op.exp[1]);
+		else if (exp->op.token->text[0] == '%') return rh_execute_exp(exp->op.exp[0]) % rh_execute_exp(exp->op.exp[1]);
 		else {
 			fprintf(stderr, "Not implemented ");
-			rh_dump_token(stdout, exp_terms->token);
+			rh_dump_token(stdout, exp->op.token);
 			return 1;
 		}
 	}
