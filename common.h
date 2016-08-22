@@ -47,7 +47,14 @@ typedef struct rh_token {
 	} type;
 	struct rh_token *prev;
 	rh_file *file;
-	char *file_start, *file_stop;	/* Pointer on rh_file->buf */
+	char *file_begin, *file_end;	/* Pointer on rh_file->buf */
+	struct {
+		enum {
+			TYPE_INT, TYPE_DOUBLE
+		} type;
+		long long intval;
+		long double dblval;
+	} literal;
 	// int line1, ch1, byte1, line2, ch2, byte2;
 	// char text[];	/* incomplete type */
 } rh_token;
@@ -92,13 +99,13 @@ typedef struct rh_asm_exp {
 	enum {
 		EXP_LITERAL = 0, EXP_VARIABLE, EXP_PREOP, EXP_POSTOP, EXP_BINARYOP, EXP_CONDOP
 	} type;
-	struct {
-		enum {
-			TYPE_INT, TYPE_DOUBLE
-		} type;
-		long long intval;
-		long double dblval;
-	} literal;
+//	struct {
+//		enum {
+//			TYPE_INT, TYPE_DOUBLE
+//		} type;
+//		long long intval;
+//		long double dblval;
+//	} literal;
 	struct {
 		rh_token *token;
 		struct rh_asm_exp *exp[2];

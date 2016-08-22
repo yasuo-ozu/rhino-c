@@ -37,37 +37,35 @@ void file_init(rh_context *ctx, char *fname) {
 		}
 		*ctx->buf_end++ = (char) c;
 	}
-	*ctx->buf_end = 0;
+	ctx->ch = ctx->buf - (char *) 1;
+	ctx->buf_end = 0;
 	fclose(fp);
 }
 
 char rh_getchar(rh_context *ctx, int in_literal) {
-	//int c = rh_getc(ctx->file), a, b;
 	char ret;
 	// TODO: insert proceedures for Trigraph, Preprocessor command
+	if (*ctx->ch == 0) return 0;
+	ctx->ch++;
 	if (!in_literal && *ctx->ch == '/') {
-		ctx->ch++;
-		if (*ctx->ch == '*') {
-			ctx->ch++;
+		if (ctx->ch[1] == '*') {
+			ctx->ch += 2;
 			while (*ctx->ch != '\0') {
 				if (*ctx->ch++ == '*') {
-					if (*ctx->ch++ == '/') {
+					if (*ctx->ch == '/') {
 						return ' ';
 					}
 				}
 			}
 			E_ERROR(ctx, 0, "File reached EOF in comment\n");
 			return '\0';
-		} else if (*ctx->ch == '/') {
+		} else if (ctx->ch[1] == '/') {
 			while (*ctx->ch && *ctx->ch != '\n') ctx->ch++;
-			if (ret = *ctx->ch) ctx->ch++;
-		} else {
-			return '/';
+			return ' ';
 		}
-	} else {
-		if (ret = *ctx->ch) ctx->ch++;
+		return '/';
 	}
-	return ret;
+	return *ctx->ch;
 }
 
 /* vim: set foldmethod=marker : */
