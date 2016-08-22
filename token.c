@@ -43,7 +43,7 @@ rh_token *rh_next_token(rh_context *ctx) {/*{{{*/
 	int i, j;
 	long long val_ll;
 	long double val_ld;
-	while (rh_nextchar(ctx) == 1) ctx->ch++;
+	while (rh_nextchar(ctx) == 1 || ctbl[*ctx->ch] & CP_SPACE) ctx->ch++;
 	rh_token *token = malloc(sizeof(rh_token));
 	token->type = TKN_NULL;
 	token->file = ctx->file;
