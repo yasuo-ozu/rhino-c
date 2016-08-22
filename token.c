@@ -16,6 +16,7 @@ void rh_dump_token(FILE *fp, rh_token *token) { /*{{{*/
 	printf("token ( type = %s, text = ",
 		token_type_name[token->type]);
 	for(c = token->file_begin; c < token->file_end; c++) fputc(*c, fp);
+	printf(")\n");
 } /*}}}*/
 
 void rh_token_init() {/*{{{*/
