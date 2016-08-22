@@ -13,10 +13,10 @@ void rh_dump_token(FILE *fp, rh_token *token) { /*{{{*/
 		"NULL", "IDENT", "NUMERIC", "SYMBOL", "CHAR", "STRING"
 	};
 	char *c;
-	printf("token ( type = %s, text = ",
+	fprintf(fp, "token ( type = %s, text = ",
 		token_type_name[token->type]);
 	for(c = token->file_begin; c < token->file_end; c++) fputc(*c, fp);
-	printf(")\n");
+	fprintf(fp, ")\n");
 } /*}}}*/
 
 void rh_token_init() {/*{{{*/
@@ -197,10 +197,10 @@ rh_token *rh_next_token(rh_context *ctx) {/*{{{*/
 			ctx->ch++;
 		}
 	}
+	token->file_end = ctx->ch;
 	if (ctx->file->dump_token) {
 		rh_dump_token(stderr, token);
 	}
-	token->file_end = ctx->ch;
 	return token;
 }/*}}}*/
 

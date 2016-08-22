@@ -46,7 +46,7 @@ int rhino_main(int argc, char **argv) {
 	file_init(&ctx, fname);
 	ctx.file->dump_token = f_dump_token;
 
-	//rh_token_init();
+	rh_token_init();
 	//rh_next_token(&ctx);
 	// while (ctx.token->type != TKN_NULL) rh_next_token(&ctx);
 	
