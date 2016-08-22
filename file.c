@@ -22,23 +22,23 @@ void file_init(rh_context *ctx, char *fname) {
 	if (!fp) {
 		E_FATAL(ctx, 0, "File open error: %s\n", fname);
 	}
-	ctx->buf = ctx->buf_end = rh_malloc(DEFAULT_FILE_BUF_SIZE);
+	ctx->file->buf = ctx->file->buf_end = rh_malloc(DEFAULT_FILE_BUF_SIZE);
 	size_t buf_size = DEFAULT_FILE_BUF_SIZE;
-	char *buf_max = ctx->buf + buf_size;
+	char *buf_max = ctx->file->buf + buf_size;
 	int c;
-	while((c = fgetc(fname)) != EOF) {
+	while((c = fgetc(fp)) != EOF) {
 		if (c == 0) c = (int) ' ';
-		if (ctx->buf_end + 16 >= buf_max) {
-			size_t now = ctx->buf_end - ctx->buf;
+		if (ctx->file->buf_end + 16 >= buf_max) {
+			size_t now = ctx->file->buf_end - ctx->file->buf;
 			buf_size += DEFAULT_FILE_BUF_SIZE;
-			ctx->buf = rh_realloc(ctx->buf, buf_size);
-			ctx->buf_end = ctx->buf + now;
-			buf_max = ctx_buf + buf_size;
+			ctx->file->buf = rh_realloc(ctx->file->buf, buf_size);
+			ctx->file->buf_end = ctx->file->buf + now;
+			buf_max = ctx->file->buf + buf_size;
 		}
-		*ctx->buf_end++ = (char) c;
+		*ctx->file->buf_end++ = (char) c;
 	}
-	ctx->ch = ctx->buf - (char *) 1;
-	ctx->buf_end = 0;
+	ctx->ch = ctx->file->buf - (char *) 1;
+	ctx->file->buf_end = 0;
 	fclose(fp);
 }
 
@@ -49,7 +49,7 @@ int rh_nextchar(rh_context *ctx) {
 	// if (*ctx->ch == 0) return -1;
 	// ctx->ch++;
 	if (*ctx->ch == 0) return -1;
-	else if (!in_literal && *ctx->ch == '/') {
+	else if (*ctx->ch == '/') {
 		if (ctx->ch[1] == '*') {
 			ctx->ch += 2;
 			while (*ctx->ch) {

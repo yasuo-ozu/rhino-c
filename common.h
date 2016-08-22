@@ -6,16 +6,11 @@
 #include <ctype.h>
 #include <setjmp.h>
 
-
-/* common settings */
-
-#define MAX_FNAME	1024
-
 /****************************************/
 /*************** file.c *****************/
 /****************************************/
+#define MAX_FNAME	1024
 #define MAX_FILE_DEPTH	40
-#define MAX_UNGET_BUF	10
 #define DEFAULT_FILE_BUF_SIZE	(4*1024)
 
 typedef struct rh_file {
@@ -35,7 +30,6 @@ typedef struct rh_file {
 /****************************************/
 /************** token.c *****************/
 /****************************************/
-
 typedef struct rh_token {
 	enum {
 		TKN_IDENT = 1,		/* begins with _A-Za-z, followed with _A-Za-z0-9 */
@@ -45,7 +39,7 @@ typedef struct rh_token {
 		TKN_STRING = 5,		/* begins with ", ends with ". following string tokens are connected as one. */
 		TKN_NULL = 0		/* implies end of file */
 	} type;
-	struct rh_token *prev;
+	struct rh_token *next;
 	rh_file *file;
 	char *file_begin, *file_end;	/* Pointer on rh_file->buf */
 	struct {
@@ -74,58 +68,57 @@ enum {/*{{{*/
 /****************************************/
 /**************** type.c ***************/
 /****************************************/
-
-typedef struct rh_type {
-	enum {
-		TK_NULL = 0,
-		TK_CONST, TK_VOLATILE, TK_VOID, TK_CHAR, TK_SHORT, TK_INT, TK_LONG, TK_FLOAT, TK_DOUBLE, TK_SIGNED, TK_UNSIGNED,
-		TK_STRUCT, TK_ENUM, TK_TYPEDEF_NAME, TK_AUTO, TK_REGISTER, TK_STATIC, TK_EXTERN, TK_TYPEDEF
-	} kind;
-	// int size;
-	// struct rh_type *child;
-	// char *name;				// TYPEDEF_NAME / STRUCT / ENUM
-	rh_token *token;		// ident
-	struct rh_type *next;
-	long long intval;
-	long double dblval;
-	int level;
-} rh_type;
+// typedef struct rh_type {
+// 	enum {
+// 		TK_NULL = 0,
+// 		TK_CONST, TK_VOLATILE, TK_VOID, TK_CHAR, TK_SHORT, TK_INT, TK_LONG, TK_FLOAT, TK_DOUBLE, TK_SIGNED, TK_UNSIGNED,
+// 		TK_STRUCT, TK_ENUM, TK_TYPEDEF_NAME, TK_AUTO, TK_REGISTER, TK_STATIC, TK_EXTERN, TK_TYPEDEF
+// 	} kind;
+// 	// int size;
+// 	// struct rh_type *child;
+// 	// char *name;				// TYPEDEF_NAME / STRUCT / ENUM
+// 	rh_token *token;		// ident
+// 	struct rh_type *next;
+// 	long long intval;
+// 	long double dblval;
+// 	int level;
+// } rh_type;
 
 /****************************************/
 /************** compile.c ***************/
 /****************************************/
 
-typedef struct rh_asm_exp {
-	enum {
-		EXP_LITERAL = 0, EXP_VARIABLE, EXP_PREOP, EXP_POSTOP, EXP_BINARYOP, EXP_CONDOP
-	} type;
-//	struct {
-//		enum {
-//			TYPE_INT, TYPE_DOUBLE
-//		} type;
-//		long long intval;
-//		long double dblval;
-//	} literal;
-	struct {
-		rh_token *token;
-		struct rh_asm_exp *exp[2];
-	} op;
-	rh_type *var;		// VARIABLE
-} rh_asm_exp;
-
-typedef struct rh_asm_statment {
-	enum {
-		STAT_BLANK, STAT_EXPRESSION, STAT_IF, STAT_COMPOUND
-	} type;
-	struct rh_asm_statment *next;
-	rh_asm_exp *exp[3]; // EXP / IF
-	struct rh_asm_statment *statment[3];	// IF / COMPOUND
-} rh_asm_statment;
-
-typedef struct {
- 	//rh_asm_exp *exp;
-	rh_asm_statment *statment;
-} rh_asm_global;
+// typedef struct rh_asm_exp {
+// 	enum {
+// 		EXP_LITERAL = 0, EXP_VARIABLE, EXP_PREOP, EXP_POSTOP, EXP_BINARYOP, EXP_CONDOP
+// 	} type;
+// //	struct {
+// //		enum {
+// //			TYPE_INT, TYPE_DOUBLE
+// //		} type;
+// //		long long intval;
+// //		long double dblval;
+// //	} literal;
+// 	struct {
+// 		rh_token *token;
+// 		struct rh_asm_exp *exp[2];
+// 	} op;
+// 	rh_type *var;		// VARIABLE
+// } rh_asm_exp;
+// 
+// typedef struct rh_asm_statment {
+// 	enum {
+// 		STAT_BLANK, STAT_EXPRESSION, STAT_IF, STAT_COMPOUND
+// 	} type;
+// 	struct rh_asm_statment *next;
+// 	rh_asm_exp *exp[3]; // EXP / IF
+// 	struct rh_asm_statment *statment[3];	// IF / COMPOUND
+// } rh_asm_statment;
+// 
+// typedef struct {
+//  	//rh_asm_exp *exp;
+// 	rh_asm_statment *statment;
+// } rh_asm_global;
  
 /****************************************/
 /**************** error.c ***************/
@@ -165,15 +158,15 @@ typedef struct {
 	// rh_compile_context compile;
 	rh_token *token;
 	rh_error_context error;
-	rh_type *type_top;
+	// rh_type *type_top;
 	char *ch;
 } rh_context;
 
 /* Defined in execute.c */
-int rh_execute(rh_context *ctx, rh_asm_global *global);
+int rh_execute(rh_context *ctx, rh_token *token);
 
 /* Defined in compile.c */
-rh_asm_global *rh_compile(rh_context *ctx);
+// rh_asm_global *rh_compile(rh_context *ctx);
 
 /* Defined in memory.c */
 // void rh_memman_init(rh_memman *man);
@@ -186,12 +179,12 @@ void *rh_realloc(void *p, size_t size);
 
 /* Defined in token.c */
 void rh_token_init();
-void rh_next_token(rh_context *ctx);
+rh_token *rh_next_token(rh_context *ctx);
 void rh_dump_token(FILE *fp, rh_token *token);
 
 /* Defined in file.c */
 int rh_nextchar(rh_context *ctx);
-void rh_ungetc(rh_file *file, int c);
+// void rh_ungetc(rh_file *file, int c);
 
 /* Defined in error.c */
 void rh_error(rh_context *ctx, rh_error_type type, rh_token *token, char *msg, ...);

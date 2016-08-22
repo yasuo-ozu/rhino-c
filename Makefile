@@ -1,4 +1,4 @@
-SRCS = compile.c file.c main.c token.c execute.c memory.c table.c error.c type.c
+SRCS = file.c main.c token.c execute.c memory.c table.c error.c type.c
 HEADERS = *.h
 
 .PHONY: clean unix dos

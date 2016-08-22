@@ -1,71 +1,130 @@
 #include "common.h"
 
-// 本来式オブジェクトを返すべき
-rh_asm_exp *rh_execute_exp(rh_context *ctx, rh_asm_exp *exp) {
-	if (exp->type == EXP_LITERAL) {
-		return exp;
-	} else if (exp->type == EXP_VARIABLE) {
-		rh_asm_exp *ret = rh_malloc(sizeof(rh_asm_exp));
-		ret->type = EXP_VARIABLE;
-		ret->var = exp->var;
-		ret->literal.intval = exp->var->intval;
-		ret->literal.dblval = exp->var->dblval;
-		return ret;
-	} else {
-		rh_asm_exp *exp1, *exp2, *ret = rh_malloc(sizeof(rh_asm_exp));
-		ret->type = EXP_LITERAL;
-		exp1 = rh_execute_exp(ctx, exp->op.exp[0]);
-		exp2 = rh_execute_exp(ctx, exp->op.exp[1]);
-		if (exp->op.token->text[0] == '+') {
-			ret->literal.intval = exp1->literal.intval + exp2->literal.intval; 
-			ret->literal.dblval = exp1->literal.dblval + exp2->literal.dblval; 
-		} else if (exp->op.token->text[0] == '-') {
-			ret->literal.intval = exp1->literal.intval - exp2->literal.intval; 
-			ret->literal.dblval = exp1->literal.dblval - exp2->literal.dblval; 
-		} else if (exp->op.token->text[0] == '*') {
-			ret->literal.intval = exp1->literal.intval * exp2->literal.intval; 
-			ret->literal.dblval = exp1->literal.dblval * exp2->literal.dblval; 
-		} else if (exp->op.token->text[0] == '/') {
-			ret->literal.intval = exp1->literal.intval / exp2->literal.intval; 
-			ret->literal.dblval = exp1->literal.dblval / exp2->literal.dblval; 
-		} else if (exp->op.token->text[0] == '%') {
-			ret->literal.intval = exp1->literal.intval % exp2->literal.intval; 
-			ret->literal.dblval = (int) exp1->literal.dblval % (int) exp2->literal.dblval; 
-		} else if (exp->op.token->text[0] == '=') {
-			ret->literal.intval = exp1->var->intval = exp2->literal.intval; 
-			ret->literal.dblval = exp1->var->dblval = exp2->literal.dblval; 
-		} else {
-			fprintf(stderr, "Not implemented ");
-			rh_dump_token(stdout, exp->op.token);
-			return exp;
+int token_cmp(rh_token *token, char *ident) {/*{{{*/
+	char *c = token->file_begin;
+	while (*ident) {
+		if (*c != *ident) return 0;
+		c++; ident++;
+	}
+	return 1;
+}/*}}}*/
+
+int get_priority(rh_token *token) {/*{{{*/
+	struct {
+		char *symbol; int priority;
+	} priority_table[] = {
+		{"*", 4},
+		{"/", 4},
+		{"%", 4},
+		{"+", 5},
+		{"-", 5},
+		{"=", 15},
+		{0, 0}
+	};
+	int i;
+	for (i = 0; priority_table[i].symbol; i++) {
+		if (token_cmp(token, priority_table[i].symbol)) {
+			return priority_table[i].priority;
 		}
 	}
-}
+	return -1;
+}/*}}}*/
 
-void rh_execute_statment(rh_context *ctx, rh_asm_statment *statment) {
-	if (statment->type == STAT_IF) {
-		if (rh_execute_exp(ctx, statment->exp[0])) 
-			rh_execute_statment(ctx, statment->statment[0]);
-		else if (statment->statment[1])
-			rh_execute_statment(ctx, statment->statment[1]);
-	} else if (statment->type == STAT_EXPRESSION) {
-		printf("# %d\n", rh_execute_exp(ctx, statment->exp[0])->literal.intval);
-	} else if (statment->type == STAT_COMPOUND) {
-		rh_asm_statment *s = statment->statment[0];
-		while (s) rh_execute_statment(ctx, s), s = s->next;
-	} else if (statment->type == STAT_BLANK) {
-		/* do nothing */
+rh_token *error_with_token(rh_context *ctx, rh_token *token, char *require, char *after) {/*{{{*/
+	if (token_cmp(token, require)) {
+		if (after) {
+			E_ERROR(ctx, token, "requires '%s' after '%s'", require, after);
+		} else {
+			E_ERROR(ctx, token, "requires '%s'", require);
+		}
+		return token;
 	} else {
-		E_INTERNAL(ctx, 0, "Not implemented");
+		return token->next;
+	}
+}/*}}}*/
+
+rh_token *rh_execute_expression_internal(rh_context *ctx, rh_token *token, int *ret, int priority) {/*{{{*/
+	int has_op = 0, i, j;
+	rh_token *tkn;
+	if (priority == 0) {
+		if (token->type == TKN_NUMERIC) {
+			*ret = token->literal.intval;
+		} else {
+			E_ERROR(ctx, 0, "Invalid endterm");
+			*ret = 1;
+		}
+		token = token->next;
+	} else {
+		rh_execute_expression_internal(ctx, token, ret, priority - 1);
+		while (get_priority(token) == priority) {
+			tkn = ctx->token;
+			token = token->next;
+			token = rh_execute_expression_internal(ctx, token, &i, priority - 1);
+			if (token_cmp(tkn, "+")) *ret += i;
+			if (token_cmp(tkn, "-")) *ret -= i;
+			if (token_cmp(tkn, "*")) *ret *= i;
+			if (token_cmp(tkn, "/")) *ret /= i;
+			if (token_cmp(tkn, "%")) *ret %= i;
+			else {
+				fprintf(stderr, "Not implemented ");
+				rh_dump_token(stdout, tkn);
+				*ret = 1;
+			}
+		}
+	}
+	return token;
+}/*}}}*/
+
+// 本来式オブジェクトを返すべき
+rh_token *rh_execute_expression(rh_context *ctx, rh_token *token, int *ret) {
+	return rh_execute_expression_internal(ctx, token, ret, 16);
+}
+
+rh_token *rh_execute_statement(rh_context *ctx, rh_token *token) {
+	int i;
+	if (token_cmp(token, "if")) {
+		token = token->next;
+		token = error_with_token(ctx, token, "(", "if");
+		token = rh_execute_expression(ctx, token, &i);
+		token = error_with_token(ctx, token, ")", 0);
+		token = rh_execute_statement(ctx, token);
+		if (token_cmp(token, "else")) {
+			token = token->next;
+			token = rh_execute_statement(ctx, token);
+		}
+	} else if (token_cmp(token, "{")) {
+		token = token->next;
+		while (token->type != TKN_NULL && token_cmp(token, "}")) {
+			rh_execute_statement(ctx, token);
+		}
+		token = error_with_token(ctx, token, "}", 0);
+	} else if (token_cmp(token, ";")) {
+		/* do nothing */
+	// } else if ((type = get_type(ctx))->kind != TK_NULL) {
+	// 	statment->type = STAT_BLANK;
+	// 	rh_type *tp = ctx->type_top;
+	// 	while (tp) {
+	// 		if (tp->level != level || strcmp(tp->token->text, type->token->text) == 0) break;
+	// 		tp = tp->next;
+	// 	}
+	// 	if (tp && tp->level == level) {
+	// 		rh_free(type);
+	// 		E_ERROR(ctx, type->token, "The name '%s' already exists.", type->token->text);
+	// 	} else {
+	// 		type->next = ctx->type_top;
+	// 		type->level = level;
+	// 		ctx->type_top = type;
+	// 	}
+	// 	error_with_token(ctx, ";", 0);
+	} else {
+		token = rh_execute_expression(ctx, token, &i);
+		token = error_with_token(ctx, token, ";", 0);
+		printf("# %d\n", i);
 	}
 }
 
-int rh_execute(rh_context *ctx, rh_asm_global *global) {
-	rh_asm_statment *statment = global->statment;
-	while (statment) {
-		rh_execute_statment(ctx, statment);
-		statment = statment->next;
-	}
+int rh_execute(rh_context *ctx, rh_token *token) {
+	while (token != NULL) token = rh_execute_statement(ctx, token);
 	return 0;
 }
 

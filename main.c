@@ -7,7 +7,7 @@ int rhino_main(int argc, char **argv) {
 
 	ctx.file = NULL;
 	ctx.token = NULL;
-	ctx.type_top = NULL;
+	// ctx.type_top = NULL;
 
 	ctx.error.errors = 0;
 	if (setjmp(ctx.error.jmpbuf)) {
@@ -52,21 +52,32 @@ int rhino_main(int argc, char **argv) {
 	
 
 	/* compile */
-	rh_token_init();
-	rh_asm_global *global;
-	E_NOTICE(&ctx, 0, "Begin compile...\n");
-	rh_next_token(&ctx);
-	global = rh_compile(&ctx);
-	//fclose(ctx.file->fp);
-	rh_error_dump(&ctx.error, stderr);
+	// rh_token_init();
+	// rh_asm_global *global;
+	// E_NOTICE(&ctx, 0, "Begin compile...\n");
+	// rh_next_token(&ctx);
+	// global = rh_compile(&ctx);
+	// //fclose(ctx.file->fp);
+	rh_token *token, *token_last;
+	while ((token = rh_next_token(&ctx))->type != TKN_NULL) {
+		if (ctx.token == NULL) {
+			ctx.token = token_last = token;
+		} else {
+			token_last->next = token;
+			token_last = token;
+		}
+	}
+	token_last->next = NULL;
+
 
 	E_NOTICE(&ctx, 0, "Begin execute...\n");
 	// /* run */
 	 int ret;
-	 printf("Program ended with %d\n",  ret = rh_execute(&ctx, global));
+	 printf("Program ended with %d\n",  ret = rh_execute(&ctx, ctx.token));
 
 	// TODO: release rh_asm_exp s
 
+	rh_error_dump(&ctx.error, stderr);
 	 return (ret);
 }
 

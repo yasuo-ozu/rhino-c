@@ -13,10 +13,9 @@ void rh_dump_token(FILE *fp, rh_token *token) { /*{{{*/
 		"NULL", "IDENT", "NUMERIC", "SYMBOL", "CHAR", "STRING"
 	};
 	char *c;
-	printf("token ( type = %s, line = (%d, %d), ch = (%d, %d), byte = (%d, %d), text = ",
-		token_type_name[token->type], token->line1, token->line2, token->ch1, 
-		token->ch2, token->byte1, token->byte);
-	for(c = token->file_begin; c < token->file_end; c++) fputc(fp, *c);
+	printf("token ( type = %s, text = ",
+		token_type_name[token->type]);
+	for(c = token->file_begin; c < token->file_end; c++) fputc(*c, fp);
 } /*}}}*/
 
 void rh_token_init() {/*{{{*/
@@ -39,20 +38,11 @@ void rh_token_init() {/*{{{*/
 	for (s = symbols; *s; s++) ctbl[*s] |= CP_SYMBOL;
 }/*}}}*/
 
-size_t get_token_min_size() {/*{{{*/
-	rh_token *token;
-	size_t ret;
-	static size_t token_min_size = 0;
-	if (token_min_size) return token_min_size;
-	token = malloc(0xFF);	/* 0xFF is large enough? */
-	ret = (unsigned char *) &token->text - (unsigned char *) token;
-	free(token);
-	return token_min_size = ret;
-}/*}}}*/
-
-void rh_next_token(rh_context *ctx) {/*{{{*/
+rh_token *rh_next_token(rh_context *ctx) {/*{{{*/
 	int i, j;
-	while (rh_nextchar(ctx, 0) == 1) ctx->ch++;
+	long long val_ll;
+	long double val_ld;
+	while (rh_nextchar(ctx) == 1) ctx->ch++;
 	rh_token *token = malloc(sizeof(rh_token));
 	token->type = TKN_NULL;
 	token->file = ctx->file;
@@ -73,7 +63,7 @@ void rh_next_token(rh_context *ctx) {/*{{{*/
 					is_hexadecimal = 1;
 					ctx->ch++;
 					for (;;) {
-						if (ctbl[*ctx->ch] & CP_10DIGIT) val_ll = c - '0';
+						if (ctbl[*ctx->ch] & CP_10DIGIT) val_ll = *ctx->ch - '0';
 						else if (ctbl[*ctx->ch] & CP_16DIGIT) 
 							val_ll = *ctx->ch - (ctbl[*ctx->ch] & CP_CAPITAL ? 'A' : 'a') + 10;
 						else break;
@@ -93,11 +83,11 @@ void rh_next_token(rh_context *ctx) {/*{{{*/
 			}
 			if (*ctx->ch == '.') {
 				token->literal.type = TYPE_DOUBLE;
-				token->literal.dblval = (long double) exp->literal.intval;
+				token->literal.dblval = (long double) token->literal.intval;
 				val_ll = 10;
-				c = rh_getchar(ctx, 0);
+				ctx->ch++;
 				while (ctbl[*ctx->ch] & CP_10DIGIT) {
-					exp->literal.dblval += (*ctx->ch++ - '0') / (double) val_ll;
+					token->literal.dblval += (*ctx->ch++ - '0') / (double) val_ll;
 					val_ll *= 10;
 				}
 			}
@@ -210,8 +200,7 @@ void rh_next_token(rh_context *ctx) {/*{{{*/
 		rh_dump_token(stderr, token);
 	}
 	token->file_end = ctx->ch;
-	token->prev = ctx->token;
-	ctx->token = token;
+	return token;
 }/*}}}*/
 
 /* vim: set foldmethod=marker : */
