@@ -42,30 +42,31 @@ void file_init(rh_context *ctx, char *fname) {
 	fclose(fp);
 }
 
-char rh_getchar(rh_context *ctx, int in_literal) {
-	char ret;
+/* if ctx->ch is blank, returns 1. EOF then returns -1.*/
+/* When result is 1, DO NOT use ctx->ch. */
+int rh_nextchar(rh_context *ctx) {
 	// TODO: insert proceedures for Trigraph, Preprocessor command
-	if (*ctx->ch == 0) return 0;
-	ctx->ch++;
-	if (!in_literal && *ctx->ch == '/') {
+	// if (*ctx->ch == 0) return -1;
+	// ctx->ch++;
+	if (*ctx->ch == 0) return -1;
+	else if (!in_literal && *ctx->ch == '/') {
 		if (ctx->ch[1] == '*') {
 			ctx->ch += 2;
-			while (*ctx->ch != '\0') {
+			while (*ctx->ch) {
 				if (*ctx->ch++ == '*') {
 					if (*ctx->ch == '/') {
-						return ' ';
+						return 1;
 					}
 				}
 			}
 			E_ERROR(ctx, 0, "File reached EOF in comment\n");
-			return '\0';
+			return -1;
 		} else if (ctx->ch[1] == '/') {
 			while (*ctx->ch && *ctx->ch != '\n') ctx->ch++;
-			return ' ';
+			return 1;
 		}
-		return '/';
 	}
-	return *ctx->ch;
+	return 0;
 }
 
 /* vim: set foldmethod=marker : */

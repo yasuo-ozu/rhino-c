@@ -51,73 +51,67 @@ size_t get_token_min_size() {/*{{{*/
 }/*}}}*/
 
 void rh_next_token(rh_context *ctx) {/*{{{*/
-	int i, j, k;
-	char text[256], c = *ctx->ch;
-	double d;
+	int i, j;
+	while (rh_nextchar(ctx, 0) == 1) ctx->ch++;
 	rh_token *token = malloc(sizeof(rh_token));
 	token->type = TKN_NULL;
 	token->file = ctx->file;
-
-	while (c && (ctbl[c] & CP_SPACE)) c = rh_getchar(ctx, 0);
 	token->file_begin = ctx->ch;
-	if (c) {
-		if (ctbl[c] & CP_IDENT_FIRST) {
+	if (*ctx->ch) {
+		if (ctbl[*ctx->ch] & CP_IDENT_FIRST) {
 			token->type = TKN_IDENT;
-			do c = rh_getchar(ctx, 0); while (c && ctbl[c] & CP_IDENT);
-		} else if (ctbl[c] & CP_10DIGIT) {	/* _A-Za-z0-9 */
+			while (ctbl[*ctx->ch] & CP_IDENT) ctx->ch++;
+		} else if (ctbl[*ctx->ch] & CP_10DIGIT) {	/* _A-Za-z0-9 */
 			token->type = TKN_NUMERIC;
 			token->literal.intval = 0;
 			token->literal.dblval = 0.0;
 			token->literal.type = TYPE_INT;
 			int is_hexadecimal = 0;
-			if (c == '0') {
-				c = rh_getchar(ctx, 0);
-				if (c == 'x' || c == 'X') {
+			if (*ctx->ch == '0') {
+				ctx->ch++;
+				if (*ctx->ch == 'x' || *ctx->ch == 'X') {
 					is_hexadecimal = 1;
-					c = rh_getchar(ctx, 0);
+					ctx->ch++;
 					for (;;) {
-						if (ctbl[c] & CP_10DIGIT) val_ll = c - '0';
-						else if (ctbl[c] & CP_16DIGIT) 
-							val_ll = c - (ctbl[c] & CP_CAPITAL ? 'A' : 'a') + 10;
+						if (ctbl[*ctx->ch] & CP_10DIGIT) val_ll = c - '0';
+						else if (ctbl[*ctx->ch] & CP_16DIGIT) 
+							val_ll = *ctx->ch - (ctbl[*ctx->ch] & CP_CAPITAL ? 'A' : 'a') + 10;
 						else break;
 						token->literal.intval = token->literal.intval * 16 + val_ll; 
-						c = rh_getchar(ctx, 0);
+						ctx->ch++;
 					}
 					token->literal.dblval = (long double) token->literal.intval;
 				} else {	// octadecimal number or 0
-					while (ctbl[c] & CP_8DIGIT) {
-						token->literal.intval = token->literal.intval * 8 + (c - '0');
-						c = rh_getchar(ctx, 0);
+					while (ctbl[*ctx->ch] & CP_8DIGIT) {
+						token->literal.intval = token->literal.intval * 8 + (*ctx->ch++ - '0');
 					}
 				}
 			} else {
-				while (ctbl[c] & CP_10DIGIT) {
-					token->literal.intval = token->literal.intval * 10 + (c - '0');
-					c = rh_getchar(ctx, 0);
+				while (ctbl[*ctx->ch] & CP_10DIGIT) {
+					token->literal.intval = token->literal.intval * 10 + (*ctx->ch++ - '0');
 				}
 			}
-			if (c == '.') {
+			if (*ctx->ch == '.') {
 				token->literal.type = TYPE_DOUBLE;
 				token->literal.dblval = (long double) exp->literal.intval;
 				val_ll = 10;
 				c = rh_getchar(ctx, 0);
-				while (ctbl[c] & CP_10DIGIT) {
-					exp->literal.dblval += (c - '0') / (double) val_ll;
+				while (ctbl[*ctx->ch] & CP_10DIGIT) {
+					exp->literal.dblval += (*ctx->ch++ - '0') / (double) val_ll;
 					val_ll *= 10;
-					c = rh_getchar(ctx, 0);
 				}
 			}
-			if (is_hexadecimal && (c == 'P' || c == 'p') || !is_hexadecimal && (c == 'E' || c == 'e')) {
+			if (is_hexadecimal && (*ctx->ch == 'P' || *ctx->ch == 'p') 
+				|| !is_hexadecimal && (*ctx->ch == 'E' || *ctx->ch == 'e')) {
 				token->literal.type = TYPE_DOUBLE;
-				c = rh_getchar(ctx, 0);
-				val_ld = c == '-' ? 0.1 : 10.0;
-				if (c == '-' || c == '+') c = rh_getchar(ctx, 0);
-				if (ctbl[c] & CP_10DIGIT) {
+				ctx->ch++;
+				val_ld = *ctx->ch == '-' ? 0.1 : 10.0;
+				if (*ctx->ch == '-' || *ctx->ch == '+') ctx->ch++;
+				if (ctbl[*ctx->ch] & CP_10DIGIT) {
 					val_ll = 0;
 					do {
-						val_ll = val_ll * 10 + (c - '0');
-						c = rh_getchar(ctx, 0);
-					} while (ctbl[c] & CP_10DIGIT);
+						val_ll = val_ll * 10 + (*ctx->ch++ - '0');
+					} while (ctbl[*ctx->ch++] & CP_10DIGIT);
 					for (; val_ll; val_ll--) {
 						token->literal.intval *= val_ld;
 						token->literal.dblval *= val_ld;
@@ -152,7 +146,7 @@ void rh_next_token(rh_context *ctx) {/*{{{*/
 				} else break;
 				c = rh_getchar(ctx, 0);
 			}*/
-			if (ctbl[c] & CP_IDENT) {
+			if (ctbl[*ctx->ch] & CP_IDENT) {
 				E_ERROR(ctx, ctx->token, "Missing in flag\n");
 			}
 
@@ -176,7 +170,7 @@ void rh_next_token(rh_context *ctx) {/*{{{*/
 			// 	}
 			// } while (ctbl[c] & CP_IDENT);
 #endif
-		} else if (c == '"' || c == '\'') {
+		} else if (*ctx->ch == '"' || *ctx->ch == '\'') {
 			// a = c;		/* reserve starting symbol */
 			// token->type = a == '"' ? TKN_STRING : TKN_CHAR;
 			// token->text[count++] = a;

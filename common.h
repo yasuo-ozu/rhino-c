@@ -190,7 +190,7 @@ void rh_next_token(rh_context *ctx);
 void rh_dump_token(FILE *fp, rh_token *token);
 
 /* Defined in file.c */
-int rh_getchar(rh_context *ctx, int in_literal);
+int rh_nextchar(rh_context *ctx);
 void rh_ungetc(rh_file *file, int c);
 
 /* Defined in error.c */
