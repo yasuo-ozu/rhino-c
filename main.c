@@ -43,15 +43,8 @@ int rhino_main(int argc, char **argv) {
 	}
 
 	/* Load file */
-	ctx.file = malloc(sizeof(rh_file));
-	ctx.file->line = ctx.file->ch = 0;
+	file_init(&ctx, fname);
 	ctx.file->dump_token = f_dump_token;
-	ctx.file->unget_buf_top = 0;
-	strncpy(ctx.file->name, fname, MAX_FNAME);
-	ctx.file->fp = fopen(fname, "r");
-	if (!ctx.file->fp) {
-		E_FATAL(&ctx, 0, "File open error: %s\n", fname);
-	}
 
 	//rh_token_init();
 	//rh_next_token(&ctx);
@@ -64,7 +57,7 @@ int rhino_main(int argc, char **argv) {
 	E_NOTICE(&ctx, 0, "Begin compile...\n");
 	rh_next_token(&ctx);
 	global = rh_compile(&ctx);
-	fclose(ctx.file->fp);
+	//fclose(ctx.file->fp);
 	rh_error_dump(&ctx.error, stderr);
 
 	E_NOTICE(&ctx, 0, "Begin execute...\n");

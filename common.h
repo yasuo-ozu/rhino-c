@@ -16,16 +16,17 @@
 /****************************************/
 #define MAX_FILE_DEPTH	40
 #define MAX_UNGET_BUF	10
+#define DEFAULT_FILE_BUF_SIZE	(4*1024)
 
 typedef struct rh_file {
-	FILE *fp;
-	int line, ch, byte;
+	// FILE *fp;
+	// int line, ch, byte;
 	char name[MAX_FNAME];
 	struct rh_file *parent;
-
+	char *buf, *buf_end;
 	/* buffer for rh_ungetc() */
-	int unget_buf_top;
-	int unget_buf[MAX_UNGET_BUF];
+	// int unget_buf_top;
+	// int unget_buf[MAX_UNGET_BUF];
 
 	/* file-spicified flags */
 	int dump_token;
@@ -34,7 +35,6 @@ typedef struct rh_file {
 /****************************************/
 /************** token.c *****************/
 /****************************************/
-#define MAX_TOKEN_LENGTH	1024
 
 typedef struct rh_token {
 	enum {
@@ -47,8 +47,9 @@ typedef struct rh_token {
 	} type;
 	struct rh_token *prev;
 	rh_file *file;
-	int line1, ch1, byte1, line2, ch2, byte2;
-	char text[];	/* incomplete type */
+	char *file_start, *file_stop;	/* Pointer on rh_file->buf */
+	// int line1, ch1, byte1, line2, ch2, byte2;
+	// char text[];	/* incomplete type */
 } rh_token;
 
 enum {/*{{{*/
@@ -158,6 +159,7 @@ typedef struct {
 	rh_token *token;
 	rh_error_context error;
 	rh_type *type_top;
+	char *ch;
 } rh_context;
 
 /* Defined in execute.c */
