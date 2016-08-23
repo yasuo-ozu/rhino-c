@@ -9,6 +9,12 @@ int token_cmp(rh_token *token, char *ident) {/*{{{*/
 	return *ident ? 0 : 1;
 }/*}}}*/
 
+int token_cmp_skip(rh_context *ctx, char *ident) {
+	int ret = token_cmp(ctx->token, ident);
+	if (ret) ctx->token = ctx->token->next;
+	return ret;
+}
+
 /* type: 2: pre-op or conditional operator, 1: biary operator, 4: post operator */
 int get_priority(rh_token *token, int type) {/*{{{*/
 	struct {
@@ -31,14 +37,12 @@ int get_priority(rh_token *token, int type) {/*{{{*/
 }/*}}}*/
 
 void error_with_token(rh_context *ctx, char *require, char *after) {/*{{{*/
-	if (!token_cmp(ctx->token, require)) {
+	if (!token_cmp_skip(ctx, require)) {
 		if (after) {
 			E_ERROR(ctx, ctx->token, "requires '%s' after '%s'", require, after);
 		} else {
 			E_ERROR(ctx, ctx->token, "requires '%s'", require);
 		}
-	} else {
-		ctx->token = ctx->token->next;
 	}
 }/*}}}*/
 
@@ -51,8 +55,7 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int
 		if (ctx->token->type == TKN_NUMERIC) {
 			*ret = ctx->token->literal.intval;
 			ctx->token = ctx->token->next;
-		} else if (token_cmp(ctx->token, "(")) {
-			ctx->token = ctx->token->next;
+		} else if (token_cmp_skip(ctx, "(")) {
 			rh_execute_expression(ctx, ret, enabled);
 			error_with_token(ctx, ")", 0);
 		} else {
@@ -117,8 +120,7 @@ void rh_execute_expression(rh_context *ctx, int *ret, int enabled) {
 
 void rh_execute_statement(rh_context *ctx, int enabled) {
 	int i;
-	if (token_cmp(ctx->token, "print")) {
-		ctx->token = ctx->token->next;
+	if (token_cmp_skip(ctx, "print")) {
 		if (ctx->token->type == TKN_STRING) {
 			char *c = ctx->token->file_begin;
 			for (c++; c < ctx->token->file_end - 1; c++)
@@ -130,25 +132,21 @@ void rh_execute_statement(rh_context *ctx, int enabled) {
 			if (enabled) printf("%d\n", i);
 		}
 		error_with_token(ctx, ";", 0);
-	} else if (token_cmp(ctx->token, "if")) {
-		ctx->token = ctx->token->next;
+	} else if (token_cmp_skip(ctx, "if")) {
 		error_with_token(ctx, "(", "if");
 		rh_execute_expression(ctx, &i, enabled);
 		error_with_token(ctx, ")", 0);
 		rh_execute_statement(ctx, enabled && i);
-		if (token_cmp(ctx->token, "else")) {
-			ctx->token = ctx->token->next;
+		if (token_cmp_skip(ctx, "else")) {
 			rh_execute_statement(ctx, enabled && !i);
 		}
-	} else if (token_cmp(ctx->token, "{")) {
-		ctx->token = ctx->token->next;
+	} else if (token_cmp_skip(ctx, "{")) {
 		while (ctx->token != NULL && !token_cmp(ctx->token, "}")) {
 			rh_execute_statement(ctx, enabled);
 		}
 		error_with_token(ctx, "}", 0);
-	} else if (token_cmp(ctx->token, ";")) {
+	} else if (token_cmp_skip(ctx, ";")) {
 		/* do nothing */
-		ctx->token = ctx->token->next;
 	// } else if ((type = get_type(ctx))->kind != TK_NULL) {
 	// 	statment->type = STAT_BLANK;
 	// 	rh_type *tp = ctx->type_top;
