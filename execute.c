@@ -42,8 +42,9 @@ void error_with_token(rh_context *ctx, char *require, char *after) {/*{{{*/
 	}
 }/*}}}*/
 
-void rh_execute_expression(rh_context *ctx, int *ret);
-void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority) {/*{{{*/
+/* When enabled==0, supress side effects. */
+void rh_execute_expression(rh_context *ctx, int *ret, int enabled);
+void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int enabled) {/*{{{*/
 	int has_op = 0, i, j;
 	rh_token *tkn;
 	if (priority == 0) {
@@ -52,7 +53,7 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority) {/*
 			ctx->token = ctx->token->next;
 		} else if (token_cmp(ctx->token, "(")) {
 			ctx->token = ctx->token->next;
-			rh_execute_expression(ctx, ret);
+			rh_execute_expression(ctx, ret, enabled);
 			error_with_token(ctx, ")", 0);
 		} else {
 			E_ERROR(ctx, 0, "Invalid endterm");
@@ -63,7 +64,7 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority) {/*
 		if (get_priority(ctx->token, 2) == priority) {
 			tkn = ctx->token;
 			ctx->token = ctx->token->next;
-			rh_execute_expression_internal(ctx, ret, priority);
+			rh_execute_expression_internal(ctx, ret, priority, enabled);
 			if (token_cmp(tkn, "+")) *ret = *ret;
 			else if (token_cmp(tkn, "-")) *ret = -*ret;
 			else if (token_cmp(tkn, "!")) *ret = !*ret;
@@ -75,11 +76,11 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority) {/*
 				rh_dump_token(stdout, tkn);
 			}
 		} else {
-			rh_execute_expression_internal(ctx, ret, priority - 1);
+			rh_execute_expression_internal(ctx, ret, priority - 1, enabled);
 			while (get_priority(ctx->token, 1) == priority) {
 				tkn = ctx->token;
 				ctx->token = ctx->token->next;
-				rh_execute_expression_internal(ctx, &i, priority - 1);
+				rh_execute_expression_internal(ctx, &i, priority - 1, enabled);
 				if (token_cmp(tkn, "+")) *ret += i;
 				else if (token_cmp(tkn, "-")) *ret -= i;
 				else if (token_cmp(tkn, "*")) *ret *= i;
@@ -97,26 +98,26 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority) {/*
 }/*}}}*/
 
 // 本来式オブジェクトを返すべき
-void rh_execute_expression(rh_context *ctx, int *ret) {
-	rh_execute_expression_internal(ctx, ret, 16);
+void rh_execute_expression(rh_context *ctx, int *ret, int enabled) {
+	rh_execute_expression_internal(ctx, ret, 16, enabled);
 }
 
-void rh_execute_statement(rh_context *ctx) {
+void rh_execute_statement(rh_context *ctx, int enabled) {
 	int i;
 	if (token_cmp(ctx->token, "if")) {
 		ctx->token = ctx->token->next;
 		error_with_token(ctx, "(", "if");
-		rh_execute_expression(ctx, &i);
+		rh_execute_expression(ctx, &i, enabled);
 		error_with_token(ctx, ")", 0);
-		rh_execute_statement(ctx);
+		rh_execute_statement(ctx, enabled && i);
 		if (token_cmp(ctx->token, "else")) {
 			ctx->token = ctx->token->next;
-			rh_execute_statement(ctx);
+			rh_execute_statement(ctx, enabled && !i);
 		}
 	} else if (token_cmp(ctx->token, "{")) {
 		ctx->token = ctx->token->next;
-		while (ctx->token->type != TKN_NULL && token_cmp(ctx->token, "}")) {
-			rh_execute_statement(ctx);
+		while (ctx->token != NULL && !token_cmp(ctx->token, "}")) {
+			rh_execute_statement(ctx, enabled);
 		}
 		error_with_token(ctx, "}", 0);
 	} else if (token_cmp(ctx->token, ";")) {
@@ -139,14 +140,14 @@ void rh_execute_statement(rh_context *ctx) {
 	// 	}
 	// 	error_with_token(ctx, ";", 0);
 	} else {
-		rh_execute_expression(ctx, &i);
+		rh_execute_expression(ctx, &i, enabled);
 		error_with_token(ctx, ";", 0);
-		printf("# %d\n", i);
+		if (enabled) printf("# %d\n", i);
 	}
 }
 
 int rh_execute(rh_context *ctx) {
-	rh_execute_statement(ctx);
+	while (ctx->token) rh_execute_statement(ctx, 1);
 	return 0;
 }
 
