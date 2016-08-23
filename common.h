@@ -163,7 +163,7 @@ typedef struct {
 } rh_context;
 
 /* Defined in execute.c */
-int rh_execute(rh_context *ctx, rh_token *token);
+int rh_execute(rh_context *ctx);
 
 /* Defined in compile.c */
 // rh_asm_global *rh_compile(rh_context *ctx);

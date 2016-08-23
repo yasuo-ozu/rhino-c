@@ -30,41 +30,40 @@ int get_priority(rh_token *token) {/*{{{*/
 	return -1;
 }/*}}}*/
 
-rh_token *error_with_token(rh_context *ctx, rh_token *token, char *require, char *after) {/*{{{*/
-	if (token_cmp(token, require)) {
+void error_with_token(rh_context *ctx, char *require, char *after) {/*{{{*/
+	if (!token_cmp(ctx->token, require)) {
 		if (after) {
-			E_ERROR(ctx, token, "requires '%s' after '%s'", require, after);
+			E_ERROR(ctx, ctx->token, "requires '%s' after '%s'", require, after);
 		} else {
-			E_ERROR(ctx, token, "requires '%s'", require);
+			E_ERROR(ctx, ctx->token, "requires '%s'", require);
 		}
-		return token;
 	} else {
-		return token->next;
+		ctx->token = ctx->token->next;
 	}
 }/*}}}*/
 
-rh_token *rh_execute_expression_internal(rh_context *ctx, rh_token *token, int *ret, int priority) {/*{{{*/
+void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority) {/*{{{*/
 	int has_op = 0, i, j;
 	rh_token *tkn;
 	if (priority == 0) {
-		if (token->type == TKN_NUMERIC) {
-			*ret = token->literal.intval;
+		if (ctx->token->type == TKN_NUMERIC) {
+			*ret = ctx->token->literal.intval;
 		} else {
 			E_ERROR(ctx, 0, "Invalid endterm");
 			*ret = 1;
 		}
-		token = token->next;
+		ctx->token = ctx->token->next;
 	} else {
-		rh_execute_expression_internal(ctx, token, ret, priority - 1);
-		while (get_priority(token) == priority) {
+		rh_execute_expression_internal(ctx, ret, priority - 1);
+		while (get_priority(ctx->token) == priority) {
 			tkn = ctx->token;
-			token = token->next;
-			token = rh_execute_expression_internal(ctx, token, &i, priority - 1);
+			ctx->token = ctx->token->next;
+			rh_execute_expression_internal(ctx, &i, priority - 1);
 			if (token_cmp(tkn, "+")) *ret += i;
-			if (token_cmp(tkn, "-")) *ret -= i;
-			if (token_cmp(tkn, "*")) *ret *= i;
-			if (token_cmp(tkn, "/")) *ret /= i;
-			if (token_cmp(tkn, "%")) *ret %= i;
+			else if (token_cmp(tkn, "-")) *ret -= i;
+			else if (token_cmp(tkn, "*")) *ret *= i;
+			else if (token_cmp(tkn, "/")) *ret /= i;
+			else if (token_cmp(tkn, "%")) *ret %= i;
 			else {
 				fprintf(stderr, "Not implemented ");
 				rh_dump_token(stdout, tkn);
@@ -72,34 +71,34 @@ rh_token *rh_execute_expression_internal(rh_context *ctx, rh_token *token, int *
 			}
 		}
 	}
-	return token;
 }/*}}}*/
 
 // 本来式オブジェクトを返すべき
-rh_token *rh_execute_expression(rh_context *ctx, rh_token *token, int *ret) {
-	return rh_execute_expression_internal(ctx, token, ret, 16);
+void rh_execute_expression(rh_context *ctx, int *ret) {
+	rh_execute_expression_internal(ctx, ret, 16);
 }
 
-rh_token *rh_execute_statement(rh_context *ctx, rh_token *token) {
+void rh_execute_statement(rh_context *ctx) {
 	int i;
-	if (token_cmp(token, "if")) {
-		token = token->next;
-		token = error_with_token(ctx, token, "(", "if");
-		token = rh_execute_expression(ctx, token, &i);
-		token = error_with_token(ctx, token, ")", 0);
-		token = rh_execute_statement(ctx, token);
-		if (token_cmp(token, "else")) {
-			token = token->next;
-			token = rh_execute_statement(ctx, token);
+	if (token_cmp(ctx->token, "if")) {
+		ctx->token = ctx->token->next;
+		error_with_token(ctx, "(", "if");
+		rh_execute_expression(ctx, &i);
+		error_with_token(ctx, ")", 0);
+		rh_execute_statement(ctx);
+		if (token_cmp(ctx->token, "else")) {
+			ctx->token = ctx->token->next;
+			rh_execute_statement(ctx);
 		}
-	} else if (token_cmp(token, "{")) {
-		token = token->next;
-		while (token->type != TKN_NULL && token_cmp(token, "}")) {
-			rh_execute_statement(ctx, token);
+	} else if (token_cmp(ctx->token, "{")) {
+		ctx->token = ctx->token->next;
+		while (ctx->token->type != TKN_NULL && token_cmp(ctx->token, "}")) {
+			rh_execute_statement(ctx);
 		}
-		token = error_with_token(ctx, token, "}", 0);
-	} else if (token_cmp(token, ";")) {
+		error_with_token(ctx, "}", 0);
+	} else if (token_cmp(ctx->token, ";")) {
 		/* do nothing */
+		ctx->token = ctx->token->next;
 	// } else if ((type = get_type(ctx))->kind != TK_NULL) {
 	// 	statment->type = STAT_BLANK;
 	// 	rh_type *tp = ctx->type_top;
@@ -117,14 +116,14 @@ rh_token *rh_execute_statement(rh_context *ctx, rh_token *token) {
 	// 	}
 	// 	error_with_token(ctx, ";", 0);
 	} else {
-		token = rh_execute_expression(ctx, token, &i);
-		token = error_with_token(ctx, token, ";", 0);
+		rh_execute_expression(ctx, &i);
+		error_with_token(ctx, ";", 0);
 		printf("# %d\n", i);
 	}
 }
 
-int rh_execute(rh_context *ctx, rh_token *token) {
-	while (token != NULL) token = rh_execute_statement(ctx, token);
+int rh_execute(rh_context *ctx) {
+	rh_execute_statement(ctx);
 	return 0;
 }
 
