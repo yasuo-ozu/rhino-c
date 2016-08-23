@@ -38,7 +38,7 @@ void file_init(rh_context *ctx, char *fname) {
 		*ctx->file->buf_end++ = (char) c;
 	}
 	ctx->ch = ctx->file->buf;
-	ctx->file->buf_end = 0;
+	*ctx->file->buf_end = 0;
 	fclose(fp);
 }
 
