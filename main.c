@@ -69,11 +69,9 @@ int rhino_main(int argc, char **argv) {
 	}
 	token_last->next = NULL;
 
-
-	E_NOTICE(&ctx, 0, "Begin execute...\n");
 	// /* run */
 	 int ret;
-	 printf("Program ended with %d\n",  ret = rh_execute(&ctx));
+	 ret = rh_execute(&ctx);
 
 	// TODO: release rh_asm_exp s
 

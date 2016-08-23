@@ -162,27 +162,10 @@ rh_token *rh_next_token(rh_context *ctx) {/*{{{*/
 			// } while (ctbl[c] & CP_IDENT);
 #endif
 		} else if (*ctx->ch == '"' || *ctx->ch == '\'') {
-			// a = c;		/* reserve starting symbol */
-			// token->type = a == '"' ? TKN_STRING : TKN_CHAR;
-			// token->text[count++] = a;
-			// while (c == a) {
-			// 	do {
-			// 		if (token_min_size + count + 2 > token_size) {
-			// 			token_size = token_size + 128;
-			// 			token = realloc(token, token_size);
-			// 		}
-			// 		c = rh_getchar(ctx, 0);
-			// 		if (c == '\\') {
-			// 			c = rh_getchar(ctx, 0);
-			// 			if (c != a) token->text[count++] = '\\';
-			// 		}
-			// 		token->text[count++] = c;
-			// 	} while (c != a && c != '\n' && c != EOF);
-			// 	if (c != a) E_ERROR(ctx, 0, "needs %c", a);
-			// 	do c = rh_getchar(ctx, 0); while (c != EOF && (ctbl[c] & CP_SPACE));
-			// }
-			// token->text[count++] = a;
-			// token->text[count] = '\0';
+			char a = *ctx->ch;		/* reserve starting symbol */
+			token->type = a == '"' ? TKN_STRING : TKN_CHAR;
+			ctx->ch++;
+			while (ctx->ch && *ctx->ch++ != a);
 		} else {
 			token->type = TKN_SYMBOL;
 			for (i = 0; symbol_with_multipul_chars[i]; i++) {
@@ -203,5 +186,6 @@ rh_token *rh_next_token(rh_context *ctx) {/*{{{*/
 	}
 	return token;
 }/*}}}*/
+
 
 /* vim: set foldmethod=marker : */

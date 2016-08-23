@@ -2,11 +2,11 @@
 
 int token_cmp(rh_token *token, char *ident) {/*{{{*/
 	char *c = token->file_begin;
-	while (*ident) {
-		if (*c != *ident) return 0;
+	while (c < token->file_end) {
+		if (!*ident || *c != *ident) return 0;
 		c++; ident++;
 	}
-	return 1;
+	return *ident ? 0 : 1;
 }/*}}}*/
 
 /* type: 2: pre-op or conditional operator, 1: biary operator, 4: post operator */
@@ -86,6 +86,19 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int
 				else if (token_cmp(tkn, "*")) *ret *= i;
 				else if (token_cmp(tkn, "/")) *ret /= i;
 				else if (token_cmp(tkn, "%")) *ret %= i;
+				else if (token_cmp(tkn, "<<")) *ret <<= i;
+				else if (token_cmp(tkn, ">>")) *ret >>= i;
+				else if (token_cmp(tkn, "<")) *ret = *ret < i;
+				else if (token_cmp(tkn, "<=")) *ret = *ret <= i;
+				else if (token_cmp(tkn, ">")) *ret = *ret > i;
+				else if (token_cmp(tkn, ">=")) *ret = *ret >= i;
+				else if (token_cmp(tkn, "==")) *ret = *ret == i;
+				else if (token_cmp(tkn, "!=")) *ret = *ret != i;
+				else if (token_cmp(tkn, "&")) *ret = *ret & i;
+				else if (token_cmp(tkn, "^")) *ret = *ret ^ i;
+				else if (token_cmp(tkn, "|")) *ret = *ret | i;
+				else if (token_cmp(tkn, "&&")) *ret = *ret && i;
+				else if (token_cmp(tkn, "||")) *ret = *ret || i;
 				else if (token_cmp(tkn, ",")) *ret = i;
 				else {
 					fprintf(stderr, "Not implemented ");
@@ -104,7 +117,20 @@ void rh_execute_expression(rh_context *ctx, int *ret, int enabled) {
 
 void rh_execute_statement(rh_context *ctx, int enabled) {
 	int i;
-	if (token_cmp(ctx->token, "if")) {
+	if (token_cmp(ctx->token, "print")) {
+		ctx->token = ctx->token->next;
+		if (ctx->token->type == TKN_STRING) {
+			char *c = ctx->token->file_begin;
+			for (c++; c < ctx->token->file_end - 1; c++)
+				if (enabled) putchar(*c);
+			if (enabled) printf("\n");
+			ctx->token = ctx->token->next;
+		} else {
+			rh_execute_expression(ctx, &i, enabled);
+			if (enabled) printf("%d\n", i);
+		}
+		error_with_token(ctx, ";", 0);
+	} else if (token_cmp(ctx->token, "if")) {
 		ctx->token = ctx->token->next;
 		error_with_token(ctx, "(", "if");
 		rh_execute_expression(ctx, &i, enabled);
@@ -142,7 +168,6 @@ void rh_execute_statement(rh_context *ctx, int enabled) {
 	} else {
 		rh_execute_expression(ctx, &i, enabled);
 		error_with_token(ctx, ";", 0);
-		if (enabled) printf("# %d\n", i);
 	}
 }
 
