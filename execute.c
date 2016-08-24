@@ -372,6 +372,15 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 		}
 	} else if (token_cmp_skip(ctx, ";")) {
 		/* do nothing */
+	} else if (token_cmp_skip(ctx, "break")) {
+		error_with_token(ctx, ";", 0);
+		return SR_BREAK;
+	} else if (token_cmp_skip(ctx, "continue")) {
+		error_with_token(ctx, ";", 0);
+		return SR_CONTINUE;
+	} else if (token_cmp_skip(ctx, "return")) {
+		error_with_token(ctx, ";", 0);
+		return SR_RETURN;
 	} else if (token_cmp_skip(ctx, "int")) {
 		do {
 			if (ctx->token->type == TKN_IDENT) {
