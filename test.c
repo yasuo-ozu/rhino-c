@@ -1,7 +1,12 @@
-int a = 10 * 4 + 2, b;
-if (4 * (3 + 2) >= 20) {
-	b = a + 1;
-	print b;
-} else {
-	print "NG!";
-}
+int a, b;
+print "Input a:";
+input a;
+print "Input b:";
+input b;
+print "a + b is";
+print a + b;
+print "random number:";
+int rand;
+random rand;
+print rand;
+

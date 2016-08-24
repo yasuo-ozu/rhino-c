@@ -252,6 +252,26 @@ void rh_execute_statement(rh_context *ctx, int enabled) {
 			if (enabled) printf("%d\n", i);
 		}
 		error_with_token(ctx, ";", 0);
+	} else if (token_cmp_skip(ctx, "input")) {
+		rh_declarator *decl = search_declarator(ctx, ctx->token);
+		if (decl) {
+			scanf("%d", ((int *)decl->memory));
+		} else {
+			E_ERROR(ctx, ctx->token, "declarator not defined");
+		}
+		ctx->token = ctx->token->next;
+		error_with_token(ctx, ";", 0);
+	} else if (token_cmp_skip(ctx, "random")) {
+		rh_declarator *decl = search_declarator(ctx, ctx->token);
+		static int rand_before = -1;
+		if (!~rand_before) rand_before = 1, srand(time(NULL));
+		if (decl) {
+			*((int *)decl->memory) = rand() / (RAND_MAX + 1.0) * 256;
+		} else {
+			E_ERROR(ctx, ctx->token, "declarator not defined");
+		}
+		ctx->token = ctx->token->next;
+		error_with_token(ctx, ";", 0);
 	} else if (token_cmp_skip(ctx, "if")) {
 		error_with_token(ctx, "(", "if");
 		rh_execute_expression(ctx, &i, enabled, 0);
