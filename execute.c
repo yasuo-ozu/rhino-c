@@ -351,6 +351,20 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 			if (sr == SR_RETURN) return SR_RETURN;
 			ctx->token = tkn;
 		}
+	} else if (token_cmp_skip(ctx, "do")) {
+		rh_token *tkn = ctx->token;
+		rh_statement_result sr;
+		for (;;) {
+			sr = rh_execute_statement(ctx, enabled);
+			error_with_token(ctx, "while", 0);
+			error_with_token(ctx, "(", "while");
+			rh_execute_expression(ctx, &i, enabled, 0);
+			error_with_token(ctx, ")", 0);
+			error_with_token(ctx, ";", 0);
+			if (!enabled || !i || sr == SR_BREAK) break;
+			if (sr == SR_RETURN) return SR_RETURN;
+			ctx->token = tkn;
+		}
 	} else if (token_cmp_skip(ctx, "for")) {
 		error_with_token(ctx, "(", "for");
 		rh_execute_expression(ctx, &i, enabled, 0);

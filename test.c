@@ -9,6 +9,12 @@ while (i <= times) {
 print sum;
 for (i = 1, sum = 0; i <= times; i++) sum += i;
 print sum;
+i = 1, sum = 0;
+do {
+	sum += i;
+	i++;
+} while (i <= times);
+print sum;
 /*
 int a, b;
 print "Input a:";
