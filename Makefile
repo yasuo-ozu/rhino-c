@@ -7,7 +7,7 @@ rhino:	$(SRCS) $(HEADERS) Makefile
 	gcc -O2 -o rhino $(SRCS)
 
 clean:	
-	rm -rf *.o rhino
+	rm -rf *.o rhino *~ .*~ *.swp .*.swp
 
 unix:
 	dos2unix *.c *.h
@@ -19,5 +19,6 @@ scsc:	scsc.c
 	gcc scsc.c -o scsc
 score:	scsc ${SRCS} ${HEADERS}
 	./scsc ${SRCS} ${HEADERS}
+	ls -l rhino
 
 # vim: set ts=8 sw=8 :
