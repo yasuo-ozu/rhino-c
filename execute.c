@@ -282,7 +282,14 @@ typedef enum {
 
 rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 	int i, j;
-	if (token_cmp_skip(ctx, "print")) {
+	if (token_cmp_skip(ctx, "time")) {
+		rh_statement_result res = SR_NORMAL;
+		clock_t t0 = clock();
+		res = rh_execute_statement(ctx, enabled);
+		if (enabled) printf("** time = %d[ms]\n", (int) (clock() - t0) / 1000);
+		return res;
+
+	} else if (token_cmp_skip(ctx, "print")) {
 		if (ctx->token->type == TKN_STRING) {
 			char *c = ctx->token->file_begin;
 			for (c++; c < ctx->token->file_end - 1; c++)
@@ -315,13 +322,15 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 		ctx->token = ctx->token->next;
 		error_with_token(ctx, ";", 0);
 	} else if (token_cmp_skip(ctx, "if")) {
+		rh_statement_result res = SR_NORMAL;
 		error_with_token(ctx, "(", "if");
 		rh_execute_expression(ctx, &i, enabled, 0);
 		error_with_token(ctx, ")", 0);
-		rh_execute_statement(ctx, enabled && i);
+		res = rh_execute_statement(ctx, enabled && i);
 		if (token_cmp_skip(ctx, "else")) {
-			rh_execute_statement(ctx, enabled && !i);
+			res = rh_execute_statement(ctx, enabled && !i && res == SR_NORMAL);
 		}
+		return res;
 	} else if (token_cmp_skip(ctx, "{")) {
 		rh_statement_result res = SR_NORMAL, res2;
 		ctx->depth++;

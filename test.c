@@ -2,15 +2,15 @@
 int i = 1, sum = 0, times;
 print "Input times:";
 input times;
-while (i <= times) {
+time while (i <= times) {
 	sum = sum + i;
 	i += 1;
 }
 print sum;
-for (i = 1, sum = 0; i <= times; i++) sum += i;
+time for (i = 1, sum = 0; i <= times; i++) sum += i;
 print sum;
 i = 1, sum = 0;
-do {
+time do {
 	sum += i;
 	i++;
 } while (i <= times);
