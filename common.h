@@ -5,6 +5,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <setjmp.h>
+#include <stddef.h>
+#include <sys/types.h>
 
 /****************************************/
 /*************** file.c *****************/
@@ -66,60 +68,24 @@ enum {/*{{{*/
 } ctbl[0xFF];/*}}}*/
 
 /****************************************/
-/**************** type.c ***************/
+/*************** memory.c ***************/
 /****************************************/
-// typedef struct rh_type {
-// 	enum {
-// 		TK_NULL = 0,
-// 		TK_CONST, TK_VOLATILE, TK_VOID, TK_CHAR, TK_SHORT, TK_INT, TK_LONG, TK_FLOAT, TK_DOUBLE, TK_SIGNED, TK_UNSIGNED,
-// 		TK_STRUCT, TK_ENUM, TK_TYPEDEF_NAME, TK_AUTO, TK_REGISTER, TK_STATIC, TK_EXTERN, TK_TYPEDEF
-// 	} kind;
-// 	// int size;
-// 	// struct rh_type *child;
-// 	// char *name;				// TYPEDEF_NAME / STRUCT / ENUM
-// 	rh_token *token;		// ident
-// 	struct rh_type *next;
-// 	long long intval;
-// 	long double dblval;
-// 	int level;
-// } rh_type;
-
-/****************************************/
-/************** compile.c ***************/
-/****************************************/
-
-// typedef struct rh_asm_exp {
-// 	enum {
-// 		EXP_LITERAL = 0, EXP_VARIABLE, EXP_PREOP, EXP_POSTOP, EXP_BINARYOP, EXP_CONDOP
-// 	} type;
-// //	struct {
-// //		enum {
-// //			TYPE_INT, TYPE_DOUBLE
-// //		} type;
-// //		long long intval;
-// //		long double dblval;
-// //	} literal;
-// 	struct {
-// 		rh_token *token;
-// 		struct rh_asm_exp *exp[2];
-// 	} op;
-// 	rh_type *var;		// VARIABLE
-// } rh_asm_exp;
-// 
-// typedef struct rh_asm_statment {
-// 	enum {
-// 		STAT_BLANK, STAT_EXPRESSION, STAT_IF, STAT_COMPOUND
-// 	} type;
-// 	struct rh_asm_statment *next;
-// 	rh_asm_exp *exp[3]; // EXP / IF
-// 	struct rh_asm_statment *statment[3];	// IF / COMPOUND
-// } rh_asm_statment;
-// 
-// typedef struct {
-//  	//rh_asm_exp *exp;
-// 	rh_asm_statment *statment;
-// } rh_asm_global;
  
+/****************************************/
+/**************** execute.c *************/
+/****************************************/
+
+#ifdef _MSC_BUILD
+typedef int ssize_t;
+#endif
+typedef struct rh_declarator {
+	rh_token *token;
+	struct rh_declarator *next;
+	void *memory;
+	ssize_t size;	// 0 when void, -1 when non-completed type
+	int depth;
+} rh_declarator;
+
 /****************************************/
 /**************** error.c ***************/
 /****************************************/
@@ -152,6 +118,8 @@ typedef struct {
 /****************************************/
 /**************** main.c ****************/
 /****************************************/
+
+#define MEMORY_SIZE	((size_t)0xFFF)
 typedef struct {
 	// rh_memman memman;
 	rh_file *file;
@@ -160,6 +128,9 @@ typedef struct {
 	rh_error_context error;
 	// rh_type *type_top;
 	char *ch;
+	rh_declarator *declarator;
+	unsigned char *memory, *sp, *hp;
+	int depth;
 } rh_context;
 
 /* Defined in execute.c */

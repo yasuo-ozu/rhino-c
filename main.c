@@ -7,6 +7,7 @@ int rhino_main(int argc, char **argv) {
 
 	ctx.file = NULL;
 	ctx.token = NULL;
+	ctx.declarator = NULL;
 	// ctx.type_top = NULL;
 
 	ctx.error.errors = 0;
@@ -46,18 +47,12 @@ int rhino_main(int argc, char **argv) {
 	file_init(&ctx, fname);
 	ctx.file->dump_token = f_dump_token;
 
+	ctx.memory = rh_malloc(MEMORY_SIZE + 1);
+	ctx.sp = (unsigned char *)ctx.memory + MEMORY_SIZE;
+	ctx.hp = ctx.memory;
 	rh_token_init();
-	//rh_next_token(&ctx);
-	// while (ctx.token->type != TKN_NULL) rh_next_token(&ctx);
-	
 
 	/* compile */
-	// rh_token_init();
-	// rh_asm_global *global;
-	// E_NOTICE(&ctx, 0, "Begin compile...\n");
-	// rh_next_token(&ctx);
-	// global = rh_compile(&ctx);
-	// //fclose(ctx.file->fp);
 	rh_token *token, *token_last;
 	while ((token = rh_next_token(&ctx))->type != TKN_NULL) {
 		if (ctx.token == NULL) {
@@ -69,11 +64,9 @@ int rhino_main(int argc, char **argv) {
 	}
 	token_last->next = NULL;
 
-	// /* run */
+	/* run */
 	 int ret;
 	 ret = rh_execute(&ctx);
-
-	// TODO: release rh_asm_exp s
 
 	rh_error_dump(&ctx.error, stderr);
 	 return (ret);

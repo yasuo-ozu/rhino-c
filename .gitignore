@@ -10,4 +10,8 @@ depends
 Session.vim
 scsc.c
 scsc
+*~
+.*~
+*.swp
+.*.swp
 
