@@ -280,15 +280,13 @@ typedef enum {
 	SR_NORMAL = 0, SR_RETURN, SR_CONTINUE, SR_BREAK
 } rh_statement_result;
 
-rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
+rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {/*{{{*/
 	int i, j;
+	rh_statement_result res = SR_NORMAL;
 	if (token_cmp_skip(ctx, "time")) {
-		rh_statement_result res = SR_NORMAL;
 		clock_t t0 = clock();
 		res = rh_execute_statement(ctx, enabled);
 		if (enabled) printf("** time = %d[ms]\n", (int) (clock() - t0) / 1000);
-		return res;
-
 	} else if (token_cmp_skip(ctx, "print")) {
 		if (ctx->token->type == TKN_STRING) {
 			char *c = ctx->token->file_begin;
@@ -322,7 +320,6 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 		ctx->token = ctx->token->next;
 		error_with_token(ctx, ";", 0);
 	} else if (token_cmp_skip(ctx, "if")) {
-		rh_statement_result res = SR_NORMAL;
 		error_with_token(ctx, "(", "if");
 		rh_execute_expression(ctx, &i, enabled, 0);
 		error_with_token(ctx, ")", 0);
@@ -330,9 +327,8 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 		if (token_cmp_skip(ctx, "else")) {
 			res = rh_execute_statement(ctx, enabled && !i && res == SR_NORMAL);
 		}
-		return res;
 	} else if (token_cmp_skip(ctx, "{")) {
-		rh_statement_result res = SR_NORMAL, res2;
+		rh_statement_result res2;
 		ctx->depth++;
 		while (ctx->token != NULL && !token_cmp(ctx->token, "}")) {
 			res2 = rh_execute_statement(ctx, enabled);
@@ -347,31 +343,32 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 		}
 		ctx->depth--;
 		error_with_token(ctx, "}", 0);
-		return res;
 	} else if (token_cmp_skip(ctx, "while")) {
 		error_with_token(ctx, "(", "while");
 		rh_token *tkn = ctx->token;
-		rh_statement_result sr;
 		for (;;) {
 			rh_execute_expression(ctx, &i, enabled, 0);
 			error_with_token(ctx, ")", 0);
-			sr = rh_execute_statement(ctx, enabled && i);
-			if (!enabled || !i || sr == SR_BREAK) break;
-			if (sr == SR_RETURN) return SR_RETURN;
+			res = rh_execute_statement(ctx, enabled && i);
+			if (!enabled || !i || res == SR_BREAK) {
+					res = SR_NORMAL;
+					break;
+			} else if (res == SR_RETURN) break;
 			ctx->token = tkn;
 		}
 	} else if (token_cmp_skip(ctx, "do")) {
 		rh_token *tkn = ctx->token;
-		rh_statement_result sr;
 		for (;;) {
-			sr = rh_execute_statement(ctx, enabled);
+			res = rh_execute_statement(ctx, enabled);
 			error_with_token(ctx, "while", 0);
 			error_with_token(ctx, "(", "while");
 			rh_execute_expression(ctx, &i, enabled, 0);
 			error_with_token(ctx, ")", 0);
 			error_with_token(ctx, ";", 0);
-			if (!enabled || !i || sr == SR_BREAK) break;
-			if (sr == SR_RETURN) return SR_RETURN;
+			if (!enabled || !i || res == SR_BREAK) {
+					res = SR_NORMAL;
+				   	break;
+			} else if (res == SR_RETURN) break;
 			ctx->token = tkn;
 		}
 	} else if (token_cmp_skip(ctx, "for")) {
@@ -379,16 +376,16 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 		rh_execute_expression(ctx, &i, enabled, 0);
 		error_with_token(ctx, ";", 0);
 		rh_token *tkn = ctx->token, *tkn0;
-		rh_statement_result sr;
 		for (;;) {
 			rh_execute_expression(ctx, &i, enabled, 0);
 			error_with_token(ctx, ";", 0);
 			tkn0 = ctx->token;
 			rh_execute_expression(ctx, &j, 0, 0);
 			error_with_token(ctx, ")", 0);
-			sr = rh_execute_statement(ctx, enabled && i);
-			if (!enabled || !i || sr == SR_BREAK) break;
-			if (sr == SR_RETURN) return SR_RETURN;
+			res = rh_execute_statement(ctx, enabled && i);
+			if (!enabled || !i || res == SR_BREAK) {
+					res = SR_NORMAL; break;
+			} else if (res == SR_RETURN) break;
 			ctx->token = tkn0;
 			rh_execute_expression(ctx, &j, enabled, 0);
 			ctx->token = tkn;
@@ -431,8 +428,8 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 		rh_execute_expression(ctx, &i, enabled, 0);
 		error_with_token(ctx, ";", 0);
 	}
-	return SR_NORMAL;
-}
+	return res;
+}/*}}}*/
 
 int rh_execute(rh_context *ctx) {
 	ctx->depth = 0;
