@@ -79,10 +79,100 @@ int is_equal_operator(rh_token *token) {
 	   && *token->file_begin != '>' && *token->file_begin != '<';
 }
 
+rh_type *read_type_specifier(rh_context *ctx) {
+	rh_type *ret = NULL;
+	int is_s = 0, is_u = 0, long_count = 0, size = -2;
+	for(;;){
+		if (token_cmp_skip(ctx, "unsigned")) is_u = 1, size = -1;
+		else if (token_cmp_skip(ctx, "signed")) is_s = 1, size = -1;
+		else if (token_cmp_skip(ctx, "long")) long_count++, size = -1;
+		else if (token_cmp_skip(ctx, "char")) size = 1;
+		else if (token_cmp_skip(ctx, "short")) size = 2;
+		else if (token_cmp_skip(ctx, "int")) size = 4;
+		else break;
+	}
+	if (size > -2) {
+		ret = rh_malloc(sizeof(rh_type));
+		if (size == -1) size = 4;
+		if (is_s && is_u) {
+			E_ERROR(ctx, 0, "Type error");
+		}
+		if (long_count) {
+			if (size != 4) {
+				E_ERROR(ctx, 0, "Type error");
+				size = 4;
+			}
+			if (long_count > 2) {
+				E_ERROR(ctx, 0, "Type error");
+				long_count = 2;
+			}
+			size *= long_count;
+		}
+		ret->specifier = SP_NUMERIC;
+		ret->size = size;
+		ret->sign = is_u ? 0 : 1;
+		ret->child = NULL;
+		ret->is_pointer = 0;
+		ret->length = 0;
+	}
+	return ret;
+}
+
+/* require_ident 1: require(variable declaration), -1: no(casting, ...), 0: any(function prototype arguments) */
+rh_type *read_type_declarator(rh_context *ctx, rh_type *parent, rh_token **p_token, int require_ident) {
+	rh_type *ret;
+	if (ctx->token->type == TKN_IDENT) {
+		if (require_ident == -1) {
+			E_ERROR(ctx, ctx->token, "Invalid declarator");
+		}
+		if (p_token) *p_token = ctx->token;
+		ret = parent;
+	} else if (token_cmp_skip(ctx, "(")) {
+		ret = read_type_declarator(ctx, parent, p_token, require_ident);
+		error_with_token(ctx, ")", 0);
+	} else {
+		int ptr = 0;
+		rh_type *ret2;
+		if (token_cmp_skip(ctx, "*")) ptr = 1;
+		ret = read_type_declarator(ctx, parent, p_token, require_ident);
+		if (token_cmp_skip(ctx, "[")) {
+			int i;
+			rh_execute_expression(ctx, &i, 0, 1);
+			error_with_token(ctx, "]", 0);
+			ret2 = rh_malloc(sizeof(rh_type));
+			ret2->length = i;
+			ret2->is_pointer = 0;
+			ret2->child = ret;
+			ret2->specifier = SP_NULL;
+			ret2->size = ret->sign = 0;
+			ret = ret2;
+		}
+		if (ptr) {
+			ret2 = rh_malloc(sizeof(rh_type));
+			ret2->length = 0;
+			ret2->is_pointer = 1;
+			ret2->child = ret;
+			ret2->specifier = SP_NULL;
+			ret2->size = ret->sign = 0;
+			ret = ret2;
+		}
+	}
+}
+
 /* When enabled==0, supress side effects. */
-void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int enabled, int is_vector) {/*{{{*/
+rh_declarator *rh_execute_expression_internal(rh_context *ctx, int priority, int enabled, int is_vector) {/*{{{*/
 	int has_op = 0, i, j;
+	rh_declarator *ret;
 	rh_token *tkn, *tkn0;
+	ret = rh_alloc(sizeof(rh_declarator));
+	ret->token = NULL;
+	ret->next = NULL;
+	ret->depth = -1;
+	ret->type = rh_alloc(sizeof(rh_type));
+	ret->type->size = 4; ret->type->sign = 1; ret->type->specifier = SP_NUMERIC; ret->type->length = 0;
+	ret->type->is_pointer = 0; ret->type->child = NULL;
+	ret->memory = rh_malloc(4);
+	*((int *)ret->memory) = 1;
 	if (priority == 0) {
 		if (ctx->token->type == TKN_NUMERIC) {
 			*ret = ctx->token->literal.intval;
@@ -92,10 +182,11 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int
 		} else if (ctx->token->type == TKN_IDENT) {
 			rh_declarator *decl = search_declarator(ctx, ctx->token);
 			if (decl) {
-				*ret = *((int *) decl->memory);
+				rh_free(ret->type);
+				rh_free(ret);
+				ret = decl;
 			} else {
 				E_ERROR(ctx, ctx->token, "declarator not defined");
-				*ret = 1;
 			}
 			ctx->token = ctx->token->next;
 		} else {
@@ -221,6 +312,7 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int
 			}
 		}
 	}
+	return ret;
 }/*}}}*/
 
 // 本来式オブジェクトを返すべき
@@ -337,31 +429,43 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 	else if (token_cmp_skip(ctx, "break")) 	res = SR_BREAK;
 	else if (token_cmp_skip(ctx, "continue")) 	res = SR_CONTINUE;
 	else if (token_cmp_skip(ctx, "return")) 	res = SR_RETURN;
+	else {
+		rh_type *typ = read_type_specifier(ctx), *typ2;
+		if (typ) {
+			do {
+				typ2 = read_type_declarator(ctx, typ, &declarator->token, 1);
+				rh_declarator *declarator = rh_malloc(sizeof(rh_declarator)), *decl;
+				declarator->type = typ2;
+				declarator->token = ctx->token;
+				declarator->depth = ctx->depth;
+				declarator->size = rh_get_type_size(typ2);
+				ctx->sp -= declarator->size;
+				declarator->next = ctx->declarator;
+				declarator->memory = ctx->sp;
+				ctx->declarator = declarator;
+				if (token_cmp_skip(ctx, "=")) {
+					decl = rh_execute_expression(ctx, enabled, 1);
+					if (enabled) {
+						
+
+					}
+				}
+			} while(token_cmp_skip(ctx, ","));
+		} else {
+			rh_execute_expression(ctx, &i, enabled, 0);
+		}
+	}
+/*
 	else if (token_cmp_skip(ctx, "int")) {
 		do {
 			if (ctx->token->type == TKN_IDENT) {
 				// TODO: 既に登録された名前でないか確認
 				// TODO: 識別子が予約語でないか確認
-				rh_declarator *declarator = rh_malloc(sizeof(rh_declarator));
-				declarator->token = ctx->token;
-				declarator->depth = ctx->depth;
-				declarator->size = 4;
-				ctx->sp -= declarator->size;
-				declarator->next = ctx->declarator;
-				declarator->memory = ctx->sp;
-				ctx->declarator = declarator;
-				ctx->token = ctx->token->next;
-				if (token_cmp_skip(ctx, "=")) {
-					rh_execute_expression(ctx, &i, enabled, 1);
-					if (enabled) *((int *) ctx->sp) = i;
-				}
 			} else {
 				E_ERROR(ctx, ctx->token, "Identifier error");
 			}
 		} while(token_cmp_skip(ctx, ","));
-	} else {
-		rh_execute_expression(ctx, &i, enabled, 0);
-	}
+		*/
 	if (needs_semicolon) error_with_token(ctx, ";", 0);
 	return res;
 }/*}}}*/

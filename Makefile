@@ -17,11 +17,12 @@ dos:
 
 scsc:	scsc.c
 	gcc scsc.c -o scsc
-score:	scsc ${SRCS} ${HEADERS} rhino
+score:	scsc ${SRCS} ${HEADERS} 
 	@echo "## SCSC Score:"
 	@./scsc ${SRCS} ${HEADERS}
 	@echo "## Char count:" `(LANG=C;wc -m ${SRCS} ${HEADERS}) | sed -n -e '/total/p'`
 	@echo "## Line count:" `(LANG=C;wc -l ${SRCS} ${HEADERS}) | sed -n -e '/total/p'`
+	gcc -O2 -o rhino $(SRCS)
 	@strip rhino
 	@echo "## Binary file size:" `du -b rhino | sed -e 's/^\([^\s]*\)\srhino/\1/'`
 	upx -9 rhino

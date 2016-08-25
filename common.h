@@ -45,13 +45,14 @@ typedef struct rh_token {
 	struct rh_token *next;
 	rh_file *file;
 	char *file_begin, *file_end;	/* Pointer on rh_file->buf */
-	struct {
-		enum {
-			TYPE_INT, TYPE_DOUBLE
-		} type;
-		long long intval;
-		long double dblval;
-	} literal;
+	// struct {
+	// 	enum {
+	// 		TYPE_INT, TYPE_DOUBLE
+	// 	} type;
+	// 	long long intval;
+	// 	long double dblval;
+	// } literal;
+	rh_declerator *declerator;
 	// int line1, ch1, byte1, line2, ch2, byte2;
 	// char text[];	/* incomplete type */
 } rh_token;
@@ -73,6 +74,25 @@ enum {/*{{{*/
 /****************************************/
  
 /****************************************/
+/*************** type.c ***************/
+/****************************************/
+
+/* It may refered from multipul places. Do not release! */
+typedef struct rh_type {
+	int length;		/* Array length. 0 means non-array */
+	int is_pointer;
+	struct rh_type *child;	/* Non-null when length>0 || is_pointer */
+
+	/* Set when length==0&&!is_pointer */
+	enum {
+		SP_NULL = 0, SP_NUMERIC, SP_FLOATING
+	} specifier;	
+	int size, sign;
+} rh_type;
+
+int rh_get_type_size(rh_type *type);
+
+/****************************************/
 /**************** execute.c *************/
 /****************************************/
 
@@ -80,11 +100,11 @@ enum {/*{{{*/
 typedef int ssize_t;
 #endif
 typedef struct rh_declarator {
-	rh_token *token;
+	rh_token *token;	/* When token null, *memory points to the area alloced alone */
 	struct rh_declarator *next;
-	void *memory;
-	ssize_t size;	// 0 when void, -1 when non-completed type
+	unsigned char *memory;
 	int depth;
+	rh_type *type;
 } rh_declarator;
 
 /****************************************/
