@@ -7,7 +7,7 @@ rhino:	$(SRCS) $(HEADERS) Makefile
 	gcc -O2 -o rhino $(SRCS)
 
 clean:	
-	rm -rf *.o rhino *~ .*~ *.swp .*.swp
+	rm -rf *.o rhino *~ .*~ *.swp .*.swp Session.vim *.exe Debug scsc
 
 unix:
 	dos2unix *.c *.h
@@ -17,7 +17,7 @@ dos:
 
 scsc:	scsc.c
 	gcc scsc.c -o scsc
-score:	scsc ${SRCS} ${HEADERS}
+score:	scsc ${SRCS} ${HEADERS} rhino
 	./scsc ${SRCS} ${HEADERS}
 	ls -l rhino
 
