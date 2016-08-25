@@ -74,8 +74,12 @@ void expression_with_paren(rh_context *ctx, int *ret, int enabled) {
 	error_with_token(ctx, ")", 0);
 }
 
-/* When enabled==0, supress side effects. */
+int is_equal_operator(rh_token *token) {
+	return token->type == TKN_SYMBOL && *(token->file_end - 1) == '='
+	   && *token->file_begin != '>' && *token->file_begin != '<';
+}
 
+/* When enabled==0, supress side effects. */
 void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int enabled, int is_vector) {/*{{{*/
 	int has_op = 0, i, j;
 	rh_token *tkn, *tkn0;
@@ -128,56 +132,73 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int
 			rh_execute_expression_internal(ctx, ret, priority - 1, enabled, 0);
 			if (is_vector && token_cmp(ctx->token, ",")) return;
 			while (get_priority(ctx->token, 1) == priority) {
-				tkn = ctx->token;
-				ctx->token = ctx->token->next;
-				rh_execute_expression_internal(ctx, &i, priority - 1, enabled, 0);
-				if (token_cmp(tkn, "+")) *ret += i;
-				else if (token_cmp(tkn, "-")) *ret -= i;
-				else if (token_cmp(tkn, "*")) *ret *= i;
-				else if (token_cmp(tkn, "/")) *ret /= i;
-				else if (token_cmp(tkn, "%")) *ret %= i;
-				else if (token_cmp(tkn, "<<")) *ret <<= i;
-				else if (token_cmp(tkn, ">>")) *ret >>= i;
-				else if (token_cmp(tkn, "<")) *ret = *ret < i;
-				else if (token_cmp(tkn, "<=")) *ret = *ret <= i;
-				else if (token_cmp(tkn, ">")) *ret = *ret > i;
-				else if (token_cmp(tkn, ">=")) *ret = *ret >= i;
-				else if (token_cmp(tkn, "==")) *ret = *ret == i;
-				else if (token_cmp(tkn, "!=")) *ret = *ret != i;
-				else if (token_cmp(tkn, "&")) *ret &= i;
-				else if (token_cmp(tkn, "^")) *ret ^= i;
-				else if (token_cmp(tkn, "|")) *ret |= i;
-				else if (token_cmp(tkn, "&&")) *ret = *ret && i;
-				else if (token_cmp(tkn, "||")) *ret = *ret || i;
-				else if (tkn->type == TKN_SYMBOL && *(tkn->file_end - 1) == '=') {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) {
-							if (token_cmp(tkn, "=")) *ret = *((int *)decl->memory) = i;
-							else if (token_cmp(tkn, "+=")) *ret = *((int *)decl->memory) += i;
-							else if (token_cmp(tkn, "-=")) *ret = *((int *)decl->memory) -= i;
-							else if (token_cmp(tkn, "*=")) *ret = *((int *)decl->memory) *= i;
-							else if (token_cmp(tkn, "/=")) *ret = *((int *)decl->memory) /= i;
-							else if (token_cmp(tkn, "%=")) *ret = *((int *)decl->memory) %= i;
-							else if (token_cmp(tkn, "<<=")) *ret = *((int *)decl->memory) <<= i;
-							else if (token_cmp(tkn, ">>=")) *ret = *((int *)decl->memory) >>= i;
-							else if (token_cmp(tkn, "&=")) *ret = *((int *)decl->memory) &= i;
-							else if (token_cmp(tkn, "^=")) *ret = *((int *)decl->memory) ^= i;
-							else if (token_cmp(tkn, "|=")) *ret = *((int *)decl->memory) != i;
+				if (is_equal_operator(ctx->token)) {
+					rh_token *eq_buf[20], *eq_exp[20], *etop;
+					int bc = 0, ec = 0;
+					eq_exp[ec++] = tkn0;
+					do {
+						eq_buf[bc++] = ctx->token;
+						eq_exp[ec++] = ctx->token = ctx->token->next;
+						rh_execute_expression_internal(ctx, ret, priority - 1, 0, 0);
+					} while (is_equal_operator(ctx->token));
+					etop = ctx->token;
+					if (!enabled) break;
+					ctx->token = eq_exp[--ec];
+					rh_execute_expression_internal(ctx, ret, priority - 1, 1, 0);
+					while (bc) {
+						rh_declarator *decl = search_declarator(ctx, eq_exp[--ec]);
+						if (decl) {
+							bc--;
+							if (token_cmp(eq_buf[bc], "=")) *ret = *((int *)decl->memory) = *ret;
+							else if (token_cmp(eq_buf[bc], "+=")) *ret = *((int *)decl->memory) += *ret;
+							else if (token_cmp(eq_buf[bc], "-=")) *ret = *((int *)decl->memory) -= *ret;
+							else if (token_cmp(eq_buf[bc], "*=")) *ret = *((int *)decl->memory) *= *ret;
+							else if (token_cmp(eq_buf[bc], "/=")) *ret = *((int *)decl->memory) /= *ret;
+							else if (token_cmp(eq_buf[bc], "%=")) *ret = *((int *)decl->memory) %= *ret;
+							else if (token_cmp(eq_buf[bc], "<<=")) *ret = *((int *)decl->memory) <<= *ret;
+							else if (token_cmp(eq_buf[bc], ">>=")) *ret = *((int *)decl->memory) >>= *ret;
+							else if (token_cmp(eq_buf[bc], "&=")) *ret = *((int *)decl->memory) &= *ret;
+							else if (token_cmp(eq_buf[bc], "^=")) *ret = *((int *)decl->memory) ^= *ret;
+							else if (token_cmp(eq_buf[bc], "|=")) *ret = *((int *)decl->memory) != *ret;
 							else {
-								E_ERROR(ctx, tkn, "invalid equal operator");
-								*ret = 1;
+								E_ERROR(ctx, eq_buf[bc], "invalid equal operator");
+								*ret = 1; break;
 							}
+						} else {
+							E_ERROR(ctx, ctx->token, "declarator not defined");
+							*ret = 1; break;
 						}
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
+					}
+					ctx->token = etop;
+					break;
+				} else {
+					tkn = ctx->token;
+					ctx->token = ctx->token->next;
+					rh_execute_expression_internal(ctx, &i, priority - 1, enabled, 0);
+					if (token_cmp(tkn, "+")) *ret += i;
+					else if (token_cmp(tkn, "-")) *ret -= i;
+					else if (token_cmp(tkn, "*")) *ret *= i;
+					else if (token_cmp(tkn, "/")) *ret /= i;
+					else if (token_cmp(tkn, "%")) *ret %= i;
+					else if (token_cmp(tkn, "<<")) *ret <<= i;
+					else if (token_cmp(tkn, ">>")) *ret >>= i;
+					else if (token_cmp(tkn, "<")) *ret = *ret < i;
+					else if (token_cmp(tkn, "<=")) *ret = *ret <= i;
+					else if (token_cmp(tkn, ">")) *ret = *ret > i;
+					else if (token_cmp(tkn, ">=")) *ret = *ret >= i;
+					else if (token_cmp(tkn, "==")) *ret = *ret == i;
+					else if (token_cmp(tkn, "!=")) *ret = *ret != i;
+					else if (token_cmp(tkn, "&")) *ret &= i;
+					else if (token_cmp(tkn, "^")) *ret ^= i;
+					else if (token_cmp(tkn, "|")) *ret |= i;
+					else if (token_cmp(tkn, "&&")) *ret = *ret && i;
+					else if (token_cmp(tkn, "||")) *ret = *ret || i;
+					else if (token_cmp(tkn, ",")) *ret = i;
+					else {
+						fprintf(stderr, "Not implemented ");
+						rh_dump_token(stdout, tkn);
 						*ret = 1;
 					}
-				} else if (token_cmp(tkn, ",")) *ret = i;
-				else {
-					fprintf(stderr, "Not implemented ");
-					rh_dump_token(stdout, tkn);
-					*ret = 1;
 				}
 			}
 			while (get_priority(ctx->token, 4) == priority) {
@@ -207,11 +228,11 @@ void rh_execute_expression(rh_context *ctx, int *ret, int enabled, int is_vector
 	rh_execute_expression_internal(ctx, ret, 16, enabled, is_vector);
 }
 
-typedef enum {
+typedef enum {/*{{{*/
 	SR_NORMAL = 0, SR_RETURN, SR_CONTINUE, SR_BREAK
 } rh_statement_result;
 
-rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {/*{{{*/
+rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {
 	int i, j, needs_semicolon = 1;
 	rh_statement_result res = SR_NORMAL;
 	if (token_cmp_skip(ctx, "time")) {

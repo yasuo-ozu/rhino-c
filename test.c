@@ -1,4 +1,3 @@
-
 int i = 1, sum = 0, times;
 print "Input times:";
 input times;
