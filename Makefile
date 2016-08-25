@@ -18,7 +18,14 @@ dos:
 scsc:	scsc.c
 	gcc scsc.c -o scsc
 score:	scsc ${SRCS} ${HEADERS} rhino
-	./scsc ${SRCS} ${HEADERS}
-	ls -l rhino
+	@echo "## SCSC Score:"
+	@./scsc ${SRCS} ${HEADERS}
+	@echo "## Char count:" `(LANG=C;wc -m ${SRCS} ${HEADERS}) | sed -n -e '/total/p'`
+	@echo "## Line count:" `(LANG=C;wc -l ${SRCS} ${HEADERS}) | sed -n -e '/total/p'`
+	@strip rhino
+	@echo "## Binary file size:" `du -b rhino | sed -e 's/^\([^\s]*\)\srhino/\1/'`
+	upx -9 rhino
+	@echo "## Compressed binary file size:" `du -b rhino | sed -e 's/^\([^\s]*\)\srhino/\1/'`
+	@rm rhino
 
 # vim: set ts=8 sw=8 :
