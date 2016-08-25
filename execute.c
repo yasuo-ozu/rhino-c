@@ -66,8 +66,15 @@ void error_with_token(rh_context *ctx, char *require, char *after) {/*{{{*/
 	}
 }/*}}}*/
 
-/* When enabled==0, supress side effects. */
 void rh_execute_expression(rh_context *ctx, int *ret, int enabled, int is_vector);
+
+void expression_with_paren(rh_context *ctx, int *ret, int enabled) {
+	error_with_token(ctx, "(", 0);
+	rh_execute_expression(ctx, ret, enabled, 0);
+	error_with_token(ctx, ")", 0);
+}
+
+/* When enabled==0, supress side effects. */
 
 void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int enabled, int is_vector) {/*{{{*/
 	int has_op = 0, i, j;
@@ -76,9 +83,8 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int
 		if (ctx->token->type == TKN_NUMERIC) {
 			*ret = ctx->token->literal.intval;
 			ctx->token = ctx->token->next;
-		} else if (token_cmp_skip(ctx, "(")) {
-			rh_execute_expression(ctx, ret, enabled, 0);
-			error_with_token(ctx, ")", 0);
+		} else if (token_cmp(ctx->token, "(")) {
+			expression_with_paren(ctx, ret, enabled);
 		} else if (ctx->token->type == TKN_IDENT) {
 			rh_declarator *decl = search_declarator(ctx, ctx->token);
 			if (decl) {
@@ -102,18 +108,13 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int
 			else if (token_cmp(tkn, "-")) *ret = -*ret;
 			else if (token_cmp(tkn, "!")) *ret = !*ret;
 			else if (token_cmp(tkn, "~")) *ret = ~*ret;
-			else if (token_cmp(tkn, "++")) {
+			else if ((j = token_cmp(tkn, "++")) || token_cmp(tkn, "--")) {
 				rh_declarator *decl = search_declarator(ctx, tkn0);
 				if (decl) {
-					if (enabled) *ret = ++*((int *)decl->memory);
-				} else {
-					E_ERROR(ctx, ctx->token, "declarator not defined");
-					*ret = 1;
-				}
-			} else if (token_cmp(tkn, "--")) {
-				rh_declarator *decl = search_declarator(ctx, tkn0);
-				if (decl) {
-					if (enabled) *ret = --*((int *)decl->memory);
+					if (enabled) {
+						if (j) *ret = ++*((int *)decl->memory);
+						else *ret = --*((int *)decl->memory);
+					}
 				} else {
 					E_ERROR(ctx, ctx->token, "declarator not defined");
 					*ret = 1;
@@ -143,96 +144,31 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int
 				else if (token_cmp(tkn, ">=")) *ret = *ret >= i;
 				else if (token_cmp(tkn, "==")) *ret = *ret == i;
 				else if (token_cmp(tkn, "!=")) *ret = *ret != i;
-				else if (token_cmp(tkn, "&")) *ret = *ret & i;
-				else if (token_cmp(tkn, "^")) *ret = *ret ^ i;
-				else if (token_cmp(tkn, "|")) *ret = *ret | i;
+				else if (token_cmp(tkn, "&")) *ret &= i;
+				else if (token_cmp(tkn, "^")) *ret ^= i;
+				else if (token_cmp(tkn, "|")) *ret |= i;
 				else if (token_cmp(tkn, "&&")) *ret = *ret && i;
 				else if (token_cmp(tkn, "||")) *ret = *ret || i;
-				else if (token_cmp(tkn, "=")) {
-					// TODO: 右結合にする
+				else if (tkn->type == TKN_SYMBOL && *(tkn->file_end - 1) == '=') {
 					rh_declarator *decl = search_declarator(ctx, tkn0);
 					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) = i;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp(tkn, "+=")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) += i;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp(tkn, "-=")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) -= i;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp(tkn, "*=")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) *= i;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp(tkn, "/=")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) /= i;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp(tkn, "%=")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) %= i;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp(tkn, "<<=")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) <<= i;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp(tkn, ">>=")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) >>= i;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp(tkn, "&=")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) &= i;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp(tkn, "^=")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) ^= i;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp(tkn, "|=")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = *((int *)decl->memory) != i;
+						if (enabled) {
+							if (token_cmp(tkn, "=")) *ret = *((int *)decl->memory) = i;
+							else if (token_cmp(tkn, "+=")) *ret = *((int *)decl->memory) += i;
+							else if (token_cmp(tkn, "-=")) *ret = *((int *)decl->memory) -= i;
+							else if (token_cmp(tkn, "*=")) *ret = *((int *)decl->memory) *= i;
+							else if (token_cmp(tkn, "/=")) *ret = *((int *)decl->memory) /= i;
+							else if (token_cmp(tkn, "%=")) *ret = *((int *)decl->memory) %= i;
+							else if (token_cmp(tkn, "<<=")) *ret = *((int *)decl->memory) <<= i;
+							else if (token_cmp(tkn, ">>=")) *ret = *((int *)decl->memory) >>= i;
+							else if (token_cmp(tkn, "&=")) *ret = *((int *)decl->memory) &= i;
+							else if (token_cmp(tkn, "^=")) *ret = *((int *)decl->memory) ^= i;
+							else if (token_cmp(tkn, "|=")) *ret = *((int *)decl->memory) != i;
+							else {
+								E_ERROR(ctx, tkn, "invalid equal operator");
+								*ret = 1;
+							}
+						}
 					} else {
 						E_ERROR(ctx, ctx->token, "declarator not defined");
 						*ret = 1;
@@ -245,18 +181,13 @@ void rh_execute_expression_internal(rh_context *ctx, int *ret, int priority, int
 				}
 			}
 			while (get_priority(ctx->token, 4) == priority) {
-				if (token_cmp_skip(ctx, "++")) {
+				if ((j = token_cmp_skip(ctx, "++")) || token_cmp_skip(ctx, "--")) {
 					rh_declarator *decl = search_declarator(ctx, tkn0);
 					if (decl) {
-						if (enabled) *ret = (*((int *)decl->memory))++;
-					} else {
-						E_ERROR(ctx, ctx->token, "declarator not defined");
-						*ret = 1;
-					}
-				} else if (token_cmp_skip(ctx, "--")) {
-					rh_declarator *decl = search_declarator(ctx, tkn0);
-					if (decl) {
-						if (enabled) *ret = (*((int *)decl->memory))--;
+						if (enabled) {
+							if (j) *ret = (*((int *)decl->memory))++;
+							else *ret = (*((int *)decl->memory))--;
+						}
 					} else {
 						E_ERROR(ctx, ctx->token, "declarator not defined");
 						*ret = 1;
@@ -281,60 +212,51 @@ typedef enum {
 } rh_statement_result;
 
 rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {/*{{{*/
-	int i, j;
+	int i, j, needs_semicolon = 1;
 	rh_statement_result res = SR_NORMAL;
 	if (token_cmp_skip(ctx, "time")) {
 		clock_t t0 = clock();
 		res = rh_execute_statement(ctx, enabled);
 		if (enabled) printf("** time = %d[ms]\n", (int) (clock() - t0) / 1000);
+		needs_semicolon = 0;
 	} else if (token_cmp_skip(ctx, "print")) {
 		if (ctx->token->type == TKN_STRING) {
 			char *c = ctx->token->file_begin;
-			for (c++; c < ctx->token->file_end - 1; c++)
-				if (enabled) putchar(*c);
+			for (c++; c < ctx->token->file_end - 1; c++) if (enabled) putchar(*c);
 			if (enabled) printf("\n");
 			ctx->token = ctx->token->next;
 		} else {
 			rh_execute_expression(ctx, &i, enabled, 0);
 			if (enabled) printf("%d\n", i);
 		}
-		error_with_token(ctx, ";", 0);
 	} else if (token_cmp_skip(ctx, "input")) {
 		rh_declarator *decl = search_declarator(ctx, ctx->token);
-		if (decl) {
-			scanf("%d", ((int *)decl->memory));
-		} else {
+		if (decl) scanf("%d", ((int *)decl->memory));
+		else {
 			E_ERROR(ctx, ctx->token, "declarator not defined");
 		}
 		ctx->token = ctx->token->next;
-		error_with_token(ctx, ";", 0);
 	} else if (token_cmp_skip(ctx, "random")) {
 		rh_declarator *decl = search_declarator(ctx, ctx->token);
 		static int rand_before = -1;
 		if (!~rand_before) rand_before = 1, srand(time(NULL));
-		if (decl) {
-			*((int *)decl->memory) = rand() / (RAND_MAX + 1.0) * 256;
-		} else {
+		if (decl) *((int *)decl->memory) = rand() / (RAND_MAX + 1.0) * 256;
+		else {
 			E_ERROR(ctx, ctx->token, "declarator not defined");
 		}
 		ctx->token = ctx->token->next;
-		error_with_token(ctx, ";", 0);
 	} else if (token_cmp_skip(ctx, "if")) {
-		error_with_token(ctx, "(", "if");
-		rh_execute_expression(ctx, &i, enabled, 0);
-		error_with_token(ctx, ")", 0);
+		expression_with_paren(ctx, &i, enabled);
 		res = rh_execute_statement(ctx, enabled && i);
-		if (token_cmp_skip(ctx, "else")) {
+		if (token_cmp_skip(ctx, "else"))
 			res = rh_execute_statement(ctx, enabled && !i && res == SR_NORMAL);
-		}
+		needs_semicolon = 0;
 	} else if (token_cmp_skip(ctx, "{")) {
 		rh_statement_result res2;
 		ctx->depth++;
 		while (ctx->token != NULL && !token_cmp(ctx->token, "}")) {
 			res2 = rh_execute_statement(ctx, enabled);
-			if (enabled && res2 != SR_NORMAL) {
-				res = res2; enabled = 0;
-			}
+			if (enabled && res2 != SR_NORMAL) res = res2, enabled = 0;
 		}
 		while (ctx->declarator != NULL && ctx->declarator->depth >= ctx->depth) {
 			rh_declarator *decl = ctx->declarator;
@@ -343,12 +265,11 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {/*{{{*/
 		}
 		ctx->depth--;
 		error_with_token(ctx, "}", 0);
+		needs_semicolon = 0;
 	} else if (token_cmp_skip(ctx, "while")) {
-		error_with_token(ctx, "(", "while");
 		rh_token *tkn = ctx->token;
 		for (;;) {
-			rh_execute_expression(ctx, &i, enabled, 0);
-			error_with_token(ctx, ")", 0);
+			expression_with_paren(ctx, &i, enabled);
 			res = rh_execute_statement(ctx, enabled && i);
 			if (!enabled || !i || res == SR_BREAK) {
 					res = SR_NORMAL;
@@ -356,14 +277,13 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {/*{{{*/
 			} else if (res == SR_RETURN) break;
 			ctx->token = tkn;
 		}
+		needs_semicolon = 0;
 	} else if (token_cmp_skip(ctx, "do")) {
 		rh_token *tkn = ctx->token;
 		for (;;) {
 			res = rh_execute_statement(ctx, enabled);
 			error_with_token(ctx, "while", 0);
-			error_with_token(ctx, "(", "while");
-			rh_execute_expression(ctx, &i, enabled, 0);
-			error_with_token(ctx, ")", 0);
+			expression_with_paren(ctx, &i, enabled);
 			error_with_token(ctx, ";", 0);
 			if (!enabled || !i || res == SR_BREAK) {
 					res = SR_NORMAL;
@@ -371,6 +291,7 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {/*{{{*/
 			} else if (res == SR_RETURN) break;
 			ctx->token = tkn;
 		}
+		needs_semicolon = 0;
 	} else if (token_cmp_skip(ctx, "for")) {
 		error_with_token(ctx, "(", "for");
 		rh_execute_expression(ctx, &i, enabled, 0);
@@ -390,18 +311,12 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {/*{{{*/
 			rh_execute_expression(ctx, &j, enabled, 0);
 			ctx->token = tkn;
 		}
-	} else if (token_cmp_skip(ctx, ";")) {
-		/* do nothing */
-	} else if (token_cmp_skip(ctx, "break")) {
-		error_with_token(ctx, ";", 0);
-		return SR_BREAK;
-	} else if (token_cmp_skip(ctx, "continue")) {
-		error_with_token(ctx, ";", 0);
-		return SR_CONTINUE;
-	} else if (token_cmp_skip(ctx, "return")) {
-		error_with_token(ctx, ";", 0);
-		return SR_RETURN;
-	} else if (token_cmp_skip(ctx, "int")) {
+		needs_semicolon = 0;
+	} else if (token_cmp(ctx->token, ";")); /* do nothing */
+	else if (token_cmp_skip(ctx, "break")) 	res = SR_BREAK;
+	else if (token_cmp_skip(ctx, "continue")) 	res = SR_CONTINUE;
+	else if (token_cmp_skip(ctx, "return")) 	res = SR_RETURN;
+	else if (token_cmp_skip(ctx, "int")) {
 		do {
 			if (ctx->token->type == TKN_IDENT) {
 				// TODO: 既に登録された名前でないか確認
@@ -423,11 +338,10 @@ rh_statement_result rh_execute_statement(rh_context *ctx, int enabled) {/*{{{*/
 				E_ERROR(ctx, ctx->token, "Identifier error");
 			}
 		} while(token_cmp_skip(ctx, ","));
-		error_with_token(ctx, ";", 0);
 	} else {
 		rh_execute_expression(ctx, &i, enabled, 0);
-		error_with_token(ctx, ";", 0);
 	}
+	if (needs_semicolon) error_with_token(ctx, ";", 0);
 	return res;
 }/*}}}*/
 
