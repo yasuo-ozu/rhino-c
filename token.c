@@ -46,7 +46,7 @@ rh_token *rh_next_token(rh_context *ctx) {/*{{{*/
 	token->type = TKN_NULL;
 	token->file = ctx->file;
 	token->file_begin = ctx->ch;
-	token->declerator = NULL;
+	token->var = NULL;
 	if (*ctx->ch) {
 		if (ctbl[*ctx->ch] & CP_IDENT_FIRST) {
 			token->type = TKN_IDENT;
@@ -54,6 +54,7 @@ rh_token *rh_next_token(rh_context *ctx) {/*{{{*/
 		} else if (ctbl[*ctx->ch] & CP_10DIGIT) {	/* _A-Za-z0-9 */
 			long long intval = 0; long double dblval = 0.0;
 			int is_hexadecimal = 0, is_dbl = 0;
+			rh_type *type = rh_create_type(ctx);
 			token->type = TKN_NUMERIC;
 			if (*ctx->ch == '0') {
 				ctx->ch++;
@@ -96,10 +97,7 @@ rh_token *rh_next_token(rh_context *ctx) {/*{{{*/
 					do {
 						p = p * 10 + (*ctx->ch++ - '0');
 					} while (ctbl[*ctx->ch++] & CP_10DIGIT);
-					for (; p; p--) {
-						token->literal.intval *= pwr;
-						token->literal.dblval *= pwr;
-					}
+					for (; p; p--) dblval *= pwr;
 				} else {
 					E_ERROR(ctx, ctx->token, "Value power must be integer");
 				}
@@ -115,68 +113,69 @@ rh_token *rh_next_token(rh_context *ctx) {/*{{{*/
 			if (ctbl[*ctx->ch] & CP_IDENT) {
 				E_ERROR(ctx, ctx->token, "Missing in flag");
 			}
-			token->declarator = rh_alloc(sizeof(rh_declarator));
-			token->declarator->token = NULL;
-			token->declarator->next = NULL;
-			token->declarator->depth = -1;
-			token->declarator->type = rh_alloc(sizeof(rh_type));
-			token->declarator->type->length = 0;
-			token->declarator->type->is_pointer = 0;
-			token->declarator->type->child = NULL;
 			if (is_dbl) {
-				token->declarator->type->specifier = SP_FLOATING;
-				token->declarator->type->sign = 1;
+				type->specifier = SP_FLOATING;
+				type->sign = 1;
 				if (long_count > 1) { E_ERROR(ctx, ctx->token, "Missing in flag L"); }
 				if (float_count > 1 || float_count && long_count) {
 					E_ERROR(ctx, ctx->token, "Missing in flag F");
 				}
 				if (unsigned_count) { E_ERROR(ctx, ctx->token, "Missing in flag U"); }
-				token->declarator->type->size = float_count ? 4 : long_count ? 16 : 8;
+				type->size = float_count ? 4 : long_count ? 16 : 8;
 			} else {
-				token->declarator->type->specifier = SP_NUMERIC;
+				type->specifier = SP_NUMERIC;
 				if (long_count > 2) { E_ERROR(ctx, ctx->token, "Missing in flag L"); }
 				if (float_count) { E_ERROR(ctx, ctx->token, "Missing in flag F"); }
 				if (unsigned_count > 1) {
 					E_ERROR(ctx, ctx->token, "Missing in flag U");
 					unsigned_count = 1;
 				}
-				token->declarator->type->size = long_count >= 2 ? 8 : 4;
-				token->declarator->type->sign = unsigned_count;
+				type->size = long_count >= 2 ? 8 : 4;
+				type->sign = unsigned_count;
 			}
-		} else if (*ctx->ch == '"' || *ctx->ch == '\'') {
-			char a = *ctx->ch;		/* reserve starting symbol */
-			token->declarator = rh_alloc(sizeof(rh_declarator));
-			token->declarator->token = NULL;
-			token->declarator->next = NULL;
-			token->declarator->depth = -1;
-			token->declarator->type = rh_alloc(sizeof(rh_type));
-			token->declarator->type->length = 0;
-			token->declarator->type->size = 1;
-			token->declarator->type->sign = 1;
-			token->declarator->type->is_pointer = 0;
-			token->declarator->type->child = NULL;
-			token->declarator->type->specifer = SP_NUMERIC;
-			if (a == '"') {
-				rh_type *typ = rh_alloc(sizeof(rh_type));
-				typ->specifer = SP_NULL;
-				typ->is_pointer = 1;
-				typ->length = 0;
-				typ->size = -1;
-				typ->sign = -1;
-				typ->child = token->declarator->type;
-				token->declarator->type = typ;
-				token->declarator->memory = ctx->hp;
+			rh_variable *var = rh_create_variable(ctx, type);
+			if (is_dbl) {
+				if (type->size == 16) *((long double *) var->memory) = dblval;
+				else if (type->size == 8) *((double *) var->memory) = dblval;
+				else if (type->size == 4) *((float *) var->memory) = dblval;
 			} else {
-				token->declarator->memory = rh_malloc(1);
+				if (type->sign) {
+					if (type->size == 8) *((long long *) var->memory) = intval;
+					if (type->size == 4) *((signed *) var->memory) = intval;
+					if (type->size == 2) *((short *) var->memory) = intval;
+					if (type->size == 1) *((signed char *) var->memory) = intval;
+				} else {
+					if (type->size == 8) *((unsigned long long *) var->memory) = intval;
+					if (type->size == 4) *((unsigned *) var->memory) = intval;
+					if (type->size == 2) *((unsigned short *) var->memory) = intval;
+					if (type->size == 1) *((unsigned char *) var->memory) = intval;
+				}
 			}
+			token->var = var;
+		} else if (*ctx->ch == '"' || *ctx->ch == '\'') {
+			char a = *ctx->ch;		/* reserve starti signedhng s signed ymbol */
+			rh_type *type = rh_create_type(ctx);
+			type->specifier = SP_NUMERIC;
+			type->size = 1; type->sign = 1;
+			if (a == '"') {
+				rh_type *type2 = rh_create_type(ctx);
+				type2->child = type;
+				type2->is_pointer = 1;
+				type2->size = 4;
+				type = type2;
+			}
+			rh_variable *var = rh_create_variable(ctx, type);
 			token->type = a == '"' ? TKN_STRING : TKN_CHAR;
 			ctx->ch++;
 			// TODO: エスケープ処理
-			while (ctx->ch && *ctx->ch != a) {
-				if (a == '"') *hp++ = *ctx->ch;
-				else *token->declarator->memory = *ctx->ch;
+			// TODO: 文字列の処理
+			*var->memory = (unsigned char)0;
+			while (*ctx->ch && *ctx->ch != a) {
+				*var->memory = *ctx->ch;
 				ctx->ch++;
+				// TODO: 複数文字をintとして解釈
 			}
+			ctx->ch++;
 		} else {
 			token->type = TKN_SYMBOL;
 			for (i = 0; symbol_with_multipul_chars[i]; i++) {

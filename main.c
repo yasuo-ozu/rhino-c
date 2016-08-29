@@ -7,8 +7,8 @@ int rhino_main(int argc, char **argv) {
 
 	ctx.file = NULL;
 	ctx.token = NULL;
-	ctx.declarator = NULL;
-	// ctx.type_top = NULL;
+	ctx.var = NULL;
+	ctx.var_t = NULL;
 
 	ctx.error.errors = 0;
 	if (setjmp(ctx.error.jmpbuf)) {
@@ -47,9 +47,9 @@ int rhino_main(int argc, char **argv) {
 	file_init(&ctx, fname);
 	ctx.file->dump_token = f_dump_token;
 
-	ctx.memory = rh_malloc(MEMORY_SIZE + 1);
-	ctx.sp = (unsigned char *)ctx.memory + MEMORY_SIZE;
-	ctx.hp = ctx.memory;
+	//ctx.memory = rh_malloc(MEMORY_SIZE + 1);
+	//ctx.sp = (unsigned char *)ctx.memory + MEMORY_SIZE;
+	//ctx.hp = ctx.memory;
 	rh_token_init();
 
 	/* compile */

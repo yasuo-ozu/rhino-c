@@ -17,14 +17,9 @@
 #define DEFAULT_FILE_BUF_SIZE	(4*1024)
 
 typedef struct rh_file {
-	// FILE *fp;
-	// int line, ch, byte;
 	char name[MAX_FNAME];
 	struct rh_file *parent;
 	char *buf, *buf_end;
-	/* buffer for rh_ungetc() */
-	// int unget_buf_top;
-	// int unget_buf[MAX_UNGET_BUF];
 
 	/* file-spicified flags */
 	int dump_token;
@@ -45,16 +40,8 @@ typedef struct rh_token {
 	struct rh_token *next;
 	rh_file *file;
 	char *file_begin, *file_end;	/* Pointer on rh_file->buf */
-	// struct {
-	// 	enum {
-	// 		TYPE_INT, TYPE_DOUBLE
-	// 	} type;
-	// 	long long intval;
-	// 	long double dblval;
-	// } literal;
-	rh_declerator *declerator;
-	// int line1, ch1, byte1, line2, ch2, byte2;
-	// char text[];	/* incomplete type */
+	//rh_variable *var;
+	void *var;
 } rh_token;
 
 enum {/*{{{*/
@@ -70,13 +57,8 @@ enum {/*{{{*/
 } ctbl[0xFF];/*}}}*/
 
 /****************************************/
-/*************** memory.c ***************/
-/****************************************/
- 
-/****************************************/
 /*************** type.c ***************/
 /****************************************/
-
 /* It may refered from multipul places. Do not release! */
 typedef struct rh_type {
 	int length;		/* Array length. 0 means non-array */
@@ -90,24 +72,17 @@ typedef struct rh_type {
 	int size, sign;
 } rh_type;
 
-int rh_get_type_size(rh_type *type);
-
-/****************************************/
 /**************** execute.c *************/
-/****************************************/
-
-#ifdef _MSC_BUILD
-typedef int ssize_t;
-#endif
-typedef struct rh_declarator {
+typedef struct rh_variable {
 	rh_token *token;	/* When token null, *memory points to the area alloced alone */
-	struct rh_declarator *next;
+	struct rh_variable *next;
 	unsigned char *memory;
 	int depth;
 	rh_type *type;
-} rh_declarator;
+	int is_left;
+} rh_variable;
 
-/****************************************/
+/****************************************//*{{{*/
 /**************** error.c ***************/
 /****************************************/
 #define ERROR_MAX_LENGTH	1024
@@ -134,40 +109,38 @@ typedef struct {
 	int errors;
 	jmp_buf jmpbuf;
 
-} rh_error_context;
-
-/****************************************/
-/**************** main.c ****************/
-/****************************************/
+} rh_error_context;/*}}}*/
 
 #define MEMORY_SIZE	((size_t)0xFFF)
 typedef struct {
-	// rh_memman memman;
 	rh_file *file;
-	// rh_compile_context compile;
 	rh_token *token;
 	rh_error_context error;
-	// rh_type *type_top;
 	char *ch;
-	rh_declarator *declarator;
-	unsigned char *memory, *sp, *hp;
+	rh_variable *var;
+	rh_variable *var_t;
+	// unsigned char *memory, *sp, *hp;
 	int depth;
 } rh_context;
 
 /* Defined in execute.c */
 int rh_execute(rh_context *ctx);
 
-/* Defined in compile.c */
-// rh_asm_global *rh_compile(rh_context *ctx);
-
 /* Defined in memory.c */
-// void rh_memman_init(rh_memman *man);
-// void rh_memman_free(rh_memman *man);
-// void rh_dump_memory_usage(FILE *fp, rh_memman *man);
-// rh_size_t rh_malloc_type(rh_memman *man, rh_size_t size, rh_mem_type type);
 void *rh_malloc(size_t size);
 void rh_free(void *p);
 void *rh_realloc(void *p, size_t size);
+
+/* type.c */
+int rh_get_type_size(rh_type *type);
+rh_type *rh_create_type(rh_context *ctx);
+rh_variable *rh_create_variable(rh_context *ctx, rh_type *type);
+int rh_compare_type(rh_type *a, rh_type *b);
+rh_variable *rh_convert_type(rh_context *ctx, rh_variable *var, rh_type *type, int is_dynamic);
+void rh_assign(rh_context *ctx, rh_variable *to, rh_variable *from);
+rh_variable *rh_variable_from_int(rh_context *ctx, int var);
+int rh_variable_to_int(rh_context *ctx, rh_variable *var);
+
 
 /* Defined in token.c */
 void rh_token_init();
@@ -178,15 +151,15 @@ void rh_dump_token(FILE *fp, rh_token *token);
 int rh_nextchar(rh_context *ctx);
 // void rh_ungetc(rh_file *file, int c);
 
-/* Defined in error.c */
+/* Defined in error.c *//*{{{*/
 void rh_error(rh_context *ctx, rh_error_type type, rh_token *token, char *msg, ...);
 void rh_error_dump(rh_error_context *err, FILE *fp);
 #define E_FATAL(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_FATAL,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))
 #define E_ERROR(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_ERROR,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))
 #define E_WARNING(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_WARNING,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))
 #define E_NOTICE(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_NOTICE,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))
-#define E_INTERNAL(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_INTERNAL,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))
+#define E_INTERNAL(ctx,tkn,msg,...)	(rh_error((ctx),ETYPE_INTERNAL,(tkn),"%s:%d " msg,__FILE__,__LINE__,__VA_ARGS__+0))/*}}}*/
 
 
-
+/* vim: set foldmethod=marker : */
 
