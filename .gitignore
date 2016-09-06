@@ -15,4 +15,5 @@ scsc
 *.swp
 .*.swp
 *.exe
+tags
 
